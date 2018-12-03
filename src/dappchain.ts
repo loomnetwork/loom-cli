@@ -162,9 +162,14 @@ export const depositCoinToDAppChainGateway = async (
       ethereumAddress
     );
     console.log(
-      `${amount.div(coinMultiplier).toString()} tokens deposited to DAppChain Gateway...`
+      `${amount
+        .div(coinMultiplier)
+        .toString()} tokens deposited to DAppChain Gateway...`
     );
-    while (pendingReceipt === null || pendingReceipt.oracleSignature.length === 0) {
+    while (
+      pendingReceipt === null ||
+      pendingReceipt.oracleSignature.length === 0
+    ) {
       pendingReceipt = await getPendingWithdrawalReceipt(account);
       await sleep(2000);
     }
@@ -194,7 +199,7 @@ export const checkDelegations = async (
   account: Account,
   validator: string,
   delegator: string
-): Promise<IDelegation> => {
+): Promise<IDelegation | null> => {
   const dpos = await getDAppChainDPOSContract(account);
   const validatorAddress = prefixAddress(account.client, validator);
   const delegatorAddress = prefixAddress(account.client, delegator);
@@ -202,12 +207,15 @@ export const checkDelegations = async (
     validatorAddress,
     delegatorAddress
   );
-  return delegation!; // @todo -> remove ! and handle null case
+  return delegation;
 };
 
-export const claimDelegations = async (account: Account, withdrawalAddress: Address) => {
+export const claimDelegations = async (
+  account: Account,
+  withdrawalAddress: Address
+) => {
   const dpos = await getDAppChainDPOSContract(account);
-  return dpos.claimDistributionAsync(withdrawalAddress)
+  return dpos.claimDistributionAsync(withdrawalAddress);
 };
 
 export const delegate = async (

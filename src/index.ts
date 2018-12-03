@@ -9,7 +9,7 @@ import {
   loadMainnetAccount,
   rinkebyGatewayAddress,
   coinMultiplier,
-  withdrawCoinFromRinkebyGateway,
+  withdrawCoinFromRinkebyGateway
 } from "./loom_mainnet";
 
 import {
@@ -157,11 +157,14 @@ program
       const receipt = await getPendingWithdrawalReceipt(account);
       if (receipt) {
         console.log(`Pending receipt:`);
-        console.log("Token owner:", receipt.tokenOwner.toString())
-        console.log("Contract:", receipt.tokenContract.toString())
-        console.log("Token kind:", receipt.tokenKind)
-        console.log("Nonce:", receipt.withdrawalNonce)
-        console.log("Signature:", CryptoUtils.bytesToHexAddr(receipt.oracleSignature))
+        console.log("Token owner:", receipt.tokenOwner.toString());
+        console.log("Contract:", receipt.tokenContract.toString());
+        console.log("Token kind:", receipt.tokenKind);
+        console.log("Nonce:", receipt.withdrawalNonce);
+        console.log(
+          "Signature:",
+          CryptoUtils.bytesToHexAddr(receipt.oracleSignature)
+        );
       } else {
         console.log(`No pending receipt`);
       }
@@ -206,8 +209,8 @@ program
       const candidates = await listCandidates(account);
       console.log(`Current candidates:`, candidates);
       candidates.forEach(c => {
-        console.log("  Pubkey:", c.pubKey);
-        console.log("  Power:", c.address);
+        console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
+        console.log("  Power:", c.address.toString());
         console.log("  Fee:", c.fee);
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
@@ -258,11 +261,11 @@ program
       chainId
     );
     try {
-      let withdrawalAddress
+      let withdrawalAddress;
       if (options.account) {
         withdrawalAddress = Address.fromString(`${chainId}:${options.account}`);
       } else {
-        withdrawalAddress = account.address
+        withdrawalAddress = account.address;
       }
       const rewards = await claimDelegations(account, withdrawalAddress);
       console.log(`User claimed back rewards: ${rewards}`);
@@ -272,44 +275,34 @@ program
   });
 
 program
-  .command("delegate <amount>")
+  .command("delegate <amount> <validator>")
   .description("Delegate `amount` to a candidate / validator")
-  .option("-v, --validator <dappchain b64 address>")
-  .action(async function(amount: string, option) {
+  .action(async function(amount: string, validator: string) {
     const account = loadDAppChainAccount(
       dappchainEndpoint,
       dappchainPrivateKey,
       chainId
     );
     try {
-      await delegate(
-        account,
-        option.validator,
-        new BN(amount).mul(coinMultiplier)
-      );
-      console.log(`Delegated ${amount} LOOM to ${option.validator}`);
+      await delegate(account, validator, new BN(amount).mul(coinMultiplier));
+      console.log(`Delegated ${amount} LOOM to ${validator}`);
     } catch (err) {
       console.error(err);
     }
   });
 
 program
-  .command("undelegate <amount>")
-  .description("Undelegate `amount` from a candidate / validator")
+  .command("undelegate <amount> <validator>")
   .option("-v, --validator <dappchain b64 address>")
-  .action(async function(amount: string, option) {
+  .action(async function(amount: string, validator: string) {
     const account = loadDAppChainAccount(
       dappchainEndpoint,
       dappchainPrivateKey,
       chainId
     );
     try {
-      await undelegate(
-        account,
-        option.validator,
-        new BN(amount).mul(coinMultiplier)
-      );
-      console.log(`Undelegated ${amount} LOOM to ${option.validator}`);
+      await undelegate(account, validator, new BN(amount).mul(coinMultiplier));
+      console.log(`Undelegated ${amount} LOOM to ${validator}`);
     } catch (err) {
       console.error(err);
     }
@@ -362,8 +355,8 @@ program
               ? rinkebyGatewayAddress
               : options.account;
         }
-        balance = await getMainnetBalance(wallet, ownerAddress)
-        balance = balance.div(ethers.utils.parseEther('1'))
+        balance = await getMainnetBalance(wallet, ownerAddress);
+        balance = balance.div(ethers.utils.parseEther("1"));
       } else {
         // Retrieve dappchain balance
         const account = loadDAppChainAccount(
@@ -374,7 +367,7 @@ program
         ownerAddress = account.address;
         try {
           balance = await getDAppChainBalance(account, options.account);
-          balance = balance.div(coinMultiplier)
+          balance = balance.div(coinMultiplier);
         } catch (err) {
           throw err;
         } finally {

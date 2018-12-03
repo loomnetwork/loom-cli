@@ -57,8 +57,11 @@ export const depositCoinToRinkebyGateway = async (
 
   console.log("Current approval:", currentApproval);
   if (amount.gt(currentApproval)) {
-    let tx: ContractTransaction = await loom.approve(gateway.address, amount.sub(currentApproval).toString());
-    await tx.wait()
+    let tx: ContractTransaction = await loom.approve(
+      gateway.address,
+      amount.sub(currentApproval).toString()
+    );
+    await tx.wait();
     console.log("Approved an extra", amount.sub(currentApproval));
   }
   return gateway.depositERC20(amount.toString(), loom.address, {
@@ -72,5 +75,7 @@ export const withdrawCoinFromRinkebyGateway = async (
   sig: string
 ): Promise<ethers.ContractTransaction> => {
   const gateway = getRinkebyGatewayContract(wallet);
-  return gateway.withdrawERC20(amount.toString(), sig, rinkebyLoomAddress, {gasLimit: 500000});
+  return gateway.withdrawERC20(amount.toString(), sig, rinkebyLoomAddress, {
+    gasLimit: 500000
+  });
 };
