@@ -64,9 +64,7 @@ export const depositCoinToRinkebyGateway = async (
     await tx.wait();
     console.log("Approved an extra", amount.sub(currentApproval));
   }
-  return gateway.depositERC20(amount.toString(), loom.address, {
-    gasLimit: 500000
-  });
+  return gateway.depositERC20(amount.toString(), loom.address);
 };
 
 export const withdrawCoinFromRinkebyGateway = async (
@@ -75,7 +73,5 @@ export const withdrawCoinFromRinkebyGateway = async (
   sig: string
 ): Promise<ethers.ContractTransaction> => {
   const gateway = getRinkebyGatewayContract(wallet);
-  return gateway.withdrawERC20(amount.toString(), sig, rinkebyLoomAddress, {
-    gasLimit: 500000
-  });
+  return gateway.withdrawERC20(amount.toString(), sig, rinkebyLoomAddress);
 };
