@@ -205,10 +205,9 @@ export const checkDelegations = async (
   return delegation!; // @todo -> remove ! and handle null case
 };
 
-export const claimDelegations = async (account: Account) => {
+export const claimDelegations = async (account: Account, withdrawalAddress: Address) => {
   const dpos = await getDAppChainDPOSContract(account);
-  throw new Error("NOT IMPLEMENTED YET");
-  // TODO -> Implement claim delegations binding
+  return dpos.claimDistributionAsync(withdrawalAddress)
 };
 
 export const delegate = async (

@@ -208,6 +208,10 @@ program
       candidates.forEach(c => {
         console.log("  Pubkey:", c.pubKey);
         console.log("  Power:", c.address);
+        console.log("  Fee:", c.fee);
+        console.log("  Description:", c.description);
+        console.log("  Name:", c.name);
+        console.log("  Website:", c.website);
       });
     } catch (err) {
       console.error(err);
@@ -246,14 +250,21 @@ program
 program
   .command("claim-delegations")
   .description("Get back the user rewards")
-  .action(async function() {
+  .option("-a, --account <account to withdraw the rewards to>")
+  .action(async function(options) {
     const account = loadDAppChainAccount(
       dappchainEndpoint,
       dappchainPrivateKey,
       chainId
     );
     try {
-      const rewards = await claimDelegations(account);
+      let withdrawalAddress
+      if (options.account) {
+        withdrawalAddress = Address.fromString(`${chainId}:${options.account}`);
+      } else {
+        withdrawalAddress = account.address
+      }
+      const rewards = await claimDelegations(account, withdrawalAddress);
       console.log(`User claimed back rewards: ${rewards}`);
     } catch (err) {
       console.error(err);
