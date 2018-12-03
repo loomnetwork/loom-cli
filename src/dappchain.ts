@@ -24,7 +24,7 @@ import {
 } from "loom-js/dist/contracts/dpos2";
 import { sleep } from "loom-js/dist/helpers";
 
-const LoomCoinTransferGateway = Contracts.TransferGateway;
+const LoomCoinTransferGateway = Contracts.LoomCoinTransferGateway;
 const AddressMapper = Contracts.AddressMapper;
 const Coin = Contracts.Coin;
 const DPOS = Contracts.DPOS2;
@@ -63,8 +63,7 @@ export const getDAppChainGatewayContract = async (
 ): Promise<Contracts.TransferGateway> => {
   const gatewayContract = await LoomCoinTransferGateway.createAsync(
     account.client,
-    account.address,
-    true
+    account.address
   );
   return gatewayContract;
 };
@@ -212,12 +211,19 @@ export const checkDelegations = async (
 
 export const claimDelegations = async (
   account: Account,
-  withdrawalAddress: Address
+  withdrawalAddress: string
 ) => {
   const dpos = await getDAppChainDPOSContract(account);
-  return dpos.claimDistributionAsync(withdrawalAddress);
+  const address = prefixAddress(account.client, withdrawalAddress);
+  return dpos.claimDistributionAsync(address);
 };
 
+/**
+ *
+ * @param account The DAppChain account
+ * @param candidate B64 encoded candidate address
+ * @param amount
+ */
 export const delegate = async (
   account: Account,
   candidate: string,
