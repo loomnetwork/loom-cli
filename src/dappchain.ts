@@ -60,7 +60,7 @@ export const getDAppChainLoomContract = async (
 
 export const getDAppChainGatewayContract = async (
   account: Account
-): Promise<Contracts.TransferGateway> => {
+): Promise<Contracts.LoomCoinTransferGateway> => {
   const gatewayContract = await LoomCoinTransferGateway.createAsync(
     account.client,
     account.address
@@ -201,7 +201,8 @@ export const checkDelegations = async (
 ): Promise<IDelegation | null> => {
   const dpos = await getDAppChainDPOSContract(account);
   const validatorAddress = prefixAddress(account.client, validator);
-  const delegatorAddress = prefixAddress(account.client, delegator);
+  const delegatorAddress = delegator ? prefixAddress(account.client, delegator) : account.address
+  console.log(delegatorAddress)
   const delegation = await dpos.checkDelegationAsync(
     validatorAddress,
     delegatorAddress
@@ -211,11 +212,10 @@ export const checkDelegations = async (
 
 export const claimDelegations = async (
   account: Account,
-  withdrawalAddress: string
+  withdrawalAddress: Address
 ) => {
   const dpos = await getDAppChainDPOSContract(account);
-  const address = prefixAddress(account.client, withdrawalAddress);
-  return dpos.claimDistributionAsync(address);
+  return dpos.claimDistributionAsync(withdrawalAddress);
 };
 
 /**
@@ -232,7 +232,9 @@ export const delegate = async (
   const coin = await getDAppChainLoomContract(account);
   const dpos = await getDAppChainDPOSContract(account);
   const address = prefixAddress(account.client, candidate);
-  await coin.approveAsync(address, amount);
+  console.log(address)
+  await coin.approveAsync(dpos.address, amount);
+  const allowance = await coin.getAllowanceAsync(dpos.address, address)
   await dpos.delegateAsync(address, amount);
 };
 

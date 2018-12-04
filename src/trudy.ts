@@ -5,7 +5,7 @@ export const config = {
   dappchainPrivateKey:
     "OED7hbGxMW3xzlRM7JLRyRRvlEJ6wUCG/A6VEpngIyeoXMHT2YqfxHZuKSd8WIx6Dre5PyYXss2qv8rp2PaXuA==",
   dappchainEndpoint: "http://loomv2a.dappchains.com:46658",
-  loomTokenEthAddress: "0x2a525f18a47443b7609a7a01e838c9cafcfb487a",
-  loomGatewayEthAddress: "0x3D2f434C6F26F722624E00e11a6A2c906d915a9d",
+  loomTokenEthAddress: "0x3666963A2fD915C9FcCC4A8285139b76Ca3b36cd",
+  loomGatewayEthAddress: "0x41B101f10528F58bd602e83Ea32431858177D1C5",
   chainId: "loomv2a"
 };

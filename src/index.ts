@@ -27,7 +27,7 @@ import {
   resolveAddressAsync
 } from "./dappchain";
 
-import { CryptoUtils, Address } from "loom-js";
+import { CryptoUtils, Address, LocalAddress } from "loom-js";
 import { config } from "./trudy";
 import { ethers } from "ethers";
 
@@ -189,6 +189,7 @@ program
       console.log(`Current validators:`);
       validators.forEach(v => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
+        console.log("  Address:", LocalAddress.fromPublicKey(v.pubKey).toString());
         console.log("  Power:", v.power);
       });
     } catch (err) {
@@ -207,10 +208,10 @@ program
     );
     try {
       const candidates = await listCandidates(account);
-      console.log(`Current candidates:`, candidates);
+      console.log(`Current candidates:`);
       candidates.forEach(c => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
-        console.log("  Power:", c.address.toString());
+        console.log("  Address:", c.address.toString());
         console.log("  Fee:", c.fee);
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
@@ -243,7 +244,7 @@ program
       console.log(
         `Delegation from ${option.delegator} to ${
           option.validator
-        } is: ${delegation}`
+        } is:`, delegation
       );
     } catch (err) {
       console.error(err);
@@ -261,12 +262,9 @@ program
       chainId
     );
     try {
-      let withdrawalAddress;
-      if (options.account) {
-        withdrawalAddress = Address.fromString(`${chainId}:${options.account}`);
-      } else {
-        withdrawalAddress = account.address;
-      }
+      let withdrawalAddress = options.account
+        ? options.account
+        : account.address;
       const rewards = await claimDelegations(account, withdrawalAddress);
       console.log(`User claimed back rewards: ${rewards}`);
     } catch (err) {
@@ -284,8 +282,10 @@ program
       chainId
     );
     try {
-      await delegate(account, validator, new BN(amount).mul(coinMultiplier));
-      console.log(`Delegated ${amount} LOOM to ${validator}`);
+      const actualAmount = new BN(amount).mul(coinMultiplier)
+      console.log(`Delegating ${actualAmount.toString()} to validator`)
+      await delegate(account, validator, actualAmount);
+      console.log(`Delegated ${actualAmount.toString()} to validator`)
     } catch (err) {
       console.error(err);
     }
@@ -364,7 +364,7 @@ program
           dappchainPrivateKey,
           chainId
         );
-        ownerAddress = account.address;
+        ownerAddress = account.address
         try {
           balance = await getDAppChainBalance(account, options.account);
           balance = balance.div(coinMultiplier);
@@ -397,5 +397,24 @@ program
       console.error(err);
     }
   });
+
+program
+  .command("getblock")
+  .description("Get the contract's address based on name")
+  .action(async function() {
+    let account;
+    try {
+      account = loadDAppChainAccount(
+        dappchainEndpoint,
+        dappchainPrivateKey,
+        chainId
+      );
+      const blk = await account.client.getBlockHeightAsync()
+      console.log(`Blk number: ${blk}`);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
 
 program.version("0.1.0").parse(process.argv);
