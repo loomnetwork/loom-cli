@@ -86,7 +86,6 @@ program
         wallet,
         account,
         actualAmount,
-        options.timeout ? options.timeout * 1000 : 120000
       );
       const tx = await withdrawCoinFromRinkebyGateway(
         wallet,
@@ -367,7 +366,6 @@ program
         ownerAddress = account.address
         try {
           balance = await getDAppChainBalance(account, options.account);
-          balance = balance.div(coinMultiplier);
         } catch (err) {
           throw err;
         } finally {

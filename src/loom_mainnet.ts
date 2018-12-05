@@ -1,6 +1,7 @@
 import { ethers, ContractTransaction } from "ethers";
 import BN from "bn.js";
 import { config } from "./trudy";
+import Web3 from 'web3'
 
 // @todo convert to ethers ABI
 // import ERC20 from './ERC20.json';
@@ -12,6 +13,37 @@ export const rinkebyGatewayAddress = config.loomGatewayEthAddress;
 export const rinkebyLoomAddress = config.loomTokenEthAddress;
 export const coinMultiplier = new BN(10).pow(new BN(18));
 
+/**
+ * Creates an Ethers wallet instance connected to a private key 
+ * @param endpoint 
+ * @param privateKey 
+ */
+export const loadMainnetAccount = (
+  endpoint: string = "https://localhost:8545",
+  privateKey: string
+): ethers.Signer => {
+  const provider = new ethers.providers.JsonRpcProvider(endpoint);
+  const wallet = new ethers.Wallet(privateKey, provider);
+  return wallet;
+};
+
+/**
+ * Creates an Ethers wallet instance connected to a private key 
+ * @param endpoint 
+ * @param privateKey 
+ */
+export const loadMetamaskAccount = (web3: Web3): ethers.Signer => {
+  const provider = new ethers.providers.Web3Provider(web3.currentProvider)
+  const wallet = provider.getSigner()
+  return wallet;
+};
+
+
+
+/**
+ * 
+ * @param wallet 
+ */
 export const getRinkebyGatewayContract = (
   wallet: ethers.Signer
 ): ethers.Contract => {
@@ -31,15 +63,6 @@ export const getMainnetBalance = async (
   const contract = getRinkebyLoomContract(wallet);
   const balance = await contract.balanceOf(accountAddress);
   return balance;
-};
-
-export const loadMainnetAccount = (
-  endpoint: string = "https://localhost:8545",
-  privateKey: string
-): ethers.Signer => {
-  const provider = new ethers.providers.JsonRpcProvider(endpoint);
-  const wallet = new ethers.Wallet(privateKey, provider);
-  return wallet;
 };
 
 export const depositCoinToRinkebyGateway = async (

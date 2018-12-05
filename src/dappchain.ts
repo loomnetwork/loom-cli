@@ -15,13 +15,13 @@ import { ethers } from "ethers";
 import {
   coinMultiplier,
   rinkebyLoomAddress,
-  rinkebyGatewayAddress
 } from "./loom_mainnet";
 import {
   IValidator,
   IDelegation,
   ICandidate
 } from "loom-js/dist/contracts/dpos2";
+import { IWithdrawalReceipt } from 'loom-js/dist/contracts/transfer-gateway'
 import { sleep } from "loom-js/dist/helpers";
 
 const LoomCoinTransferGateway = Contracts.LoomCoinTransferGateway;
@@ -29,11 +29,18 @@ const AddressMapper = Contracts.AddressMapper;
 const Coin = Contracts.Coin;
 const DPOS = Contracts.DPOS2;
 
+/**
+ * Helper object which includes the account client's address
+ */
 export interface Account {
   client: Client;
   address: Address;
 }
 
+/**
+ * Given an account object returns the current chain's deployed DPoS contract
+ * @param account The user's account object
+ */
 export const getDAppChainDPOSContract = async (
   account: Account
 ): Promise<Contracts.DPOS2> => {
@@ -41,6 +48,10 @@ export const getDAppChainDPOSContract = async (
   return dpos;
 };
 
+/**
+ * Given an account object returns the current chain's deployed AddressMapper contract
+ * @param account The user's account object
+ */
 export const getDAppChainMapperContract = async (
   account: Account
 ): Promise<Contracts.AddressMapper> => {
@@ -51,6 +62,11 @@ export const getDAppChainMapperContract = async (
   return mapperContract;
 };
 
+
+/**
+ * Given an account object returns the current chain's deployed LoomCoin contract
+ * @param account The user's account object
+ */
 export const getDAppChainLoomContract = async (
   account: Account
 ): Promise<Contracts.Coin> => {
@@ -58,6 +74,11 @@ export const getDAppChainLoomContract = async (
   return coinContract;
 };
 
+
+/**
+ * Given an account object returns the current chain's deployed LoomCoin TransferGateway contract
+ * @param account The user's account object
+ */
 export const getDAppChainGatewayContract = async (
   account: Account
 ): Promise<Contracts.LoomCoinTransferGateway> => {
@@ -69,11 +90,11 @@ export const getDAppChainGatewayContract = async (
 };
 
 /**
+ * Connect the user to the DAppChain and returns a read and write account object to be used with other functions.
  *
- * @param endpoint
- * @param privateKeyStr
- * @param chainId
- * @return account address / client object
+ * @param endpoint The dappchain's RPC Endpoint (write/read URL must be the same, they get appened with rpc and query respectively)
+ * @param privateKeyStr The user's Base64 encoded private key string
+ * @param chainId The dappchain's chainId
  */
 export const loadDAppChainAccount = (
   endpoint: string,
@@ -112,12 +133,14 @@ export const loadDAppChainAccount = (
 // COIN MAPPINGS
 
 /**
- * @param address B64 encoded public key
+ * Retrieves the  DAppChain LoomCoin balance of a user
+ * @param account The user's account object
+ * @param address The address to check the balance of. If not provided, it will check the user's balance
  */
 export const getDAppChainBalance = async (
   account: Account,
   address: string | undefined
-) => {
+) : Promise<BN> => {
   const coinContract = await getDAppChainLoomContract(account);
 
   // if no address is provided, return our balance
@@ -134,16 +157,26 @@ export const getDAppChainBalance = async (
   return balance;
 };
 
-export const getPendingWithdrawalReceipt = async (account: Account) => {
+/**
+ * Returns the user's pending withdrawal receipt (or null if there's none)
+ * @param account The user's account object
+ */
+export const getPendingWithdrawalReceipt = async (account: Account): Promise<IWithdrawalReceipt | null> => {
   const gateway = await getDAppChainGatewayContract(account);
   return gateway.withdrawalReceiptAsync(account.address);
 };
 
+/**
+ * Deposits an amount of LOOM tokens to the dappchain gateway and return a signature which can be used to withdraw the same amount from the mainnet gateway.
+ * 
+ * @param wallet Instance of ethers wallet (can be initialized either via metamask or via private key)
+ * @param account The user's account object
+ * @param amount The amount that will be deposited to the DAppChain Gateway (and will be possible to withdraw from the mainnet)
+ */
 export const depositCoinToDAppChainGateway = async (
   wallet: ethers.Signer,
   account: Account,
-  amount: BN,
-  timeout: number
+  amount: BN
 ) => {
   const coin = await getDAppChainLoomContract(account);
   const gateway = await getDAppChainGatewayContract(account);
@@ -180,6 +213,11 @@ export const depositCoinToDAppChainGateway = async (
 
 // DPOS MAPPINGS
 
+/**
+ * 
+ * Returns a list of the current validators
+ * @param account The user's account object
+ */
 export const listValidators = async (
   account: Account
 ): Promise<IValidator[]> => {
@@ -187,6 +225,11 @@ export const listValidators = async (
   return dpos.getValidatorsAsync();
 };
 
+/**
+ * 
+ * Returns a list of the current candidates
+ * @param account The user's account object
+ */
 export const listCandidates = async (
   account: Account
 ): Promise<ICandidate[]> => {
@@ -194,6 +237,13 @@ export const listCandidates = async (
   return dpos.getCandidatesAsync();
 };
 
+/**
+ * Returns the stake a delegator has delegated to a candidate/validator
+ * 
+ * @param account The user's account object
+ * @param validator The validator's hex addres
+ * @param delegator The delegator's hex address
+ */
 export const checkDelegations = async (
   account: Account,
   validator: string,
@@ -210,6 +260,11 @@ export const checkDelegations = async (
   return delegation;
 };
 
+/**
+ * Claims the user's delegations to a withdrawal address. If no address is provided, withdraws the funds to the user's address.
+ * @param account The user's account object
+ * @param withdrawalAddress The address where funds will be withdrawn
+ */
 export const claimDelegations = async (
   account: Account,
   withdrawalAddress: Address
@@ -219,10 +274,11 @@ export const claimDelegations = async (
 };
 
 /**
- *
- * @param account The DAppChain account
- * @param candidate B64 encoded candidate address
- * @param amount
+ * Delegates an amount of LOOM tokens to a candidate/validator
+ * 
+ * @param account The user's account object
+ * @param candidate The candidate's hex address
+ * @param amount The amount delegated
  */
 export const delegate = async (
   account: Account,
@@ -238,6 +294,13 @@ export const delegate = async (
   await dpos.delegateAsync(address, amount);
 };
 
+/**
+ * Undelegates an amount of LOOM tokens from a candidate/validator
+ * 
+ * @param account The user's account object
+ * @param candidate The candidate's hex address
+ * @param amount The amount to undelegate
+ */
 export const undelegate = async (
   account: Account,
   candidate: string,
@@ -251,6 +314,9 @@ export const undelegate = async (
 
 // END DPOS MAPPINGS
 
+/**
+ * Helper function to prefix an address with the chainId to get chainId:address format
+ */
 const prefixAddress = (client: Client, address: string) => {
   return Address.fromString(`${client.chainId}:${address}`);
 };
@@ -258,9 +324,10 @@ const prefixAddress = (client: Client, address: string) => {
 // GENERIC MAPPINGS
 
 /**
- *
- * @param account The output of loadDAppChainAccount
- * @param wallet
+ * Maps the user's ETH address to their DAppChain address. This MUST be called before any interaction with the gateways.
+ * 
+ * @param account The user's account object
+ * @param wallet The User's ethers wallet
  */
 export const mapAccounts = async (account: Account, wallet: ethers.Signer) => {
   const walletAddress = await wallet.getAddress();
@@ -283,6 +350,11 @@ export const mapAccounts = async (account: Account, wallet: ethers.Signer) => {
   console.log(`Mapped ${account.address} to ${ethereumAddress}`);
 };
 
+/**
+ * Returns the address of a contract by its name, if it's registered in the address mapper
+ * @param account The user's account object
+ * @param contractName The contract name
+ */
 export const resolveAddressAsync = async (
   account: Account,
   contractName: string
