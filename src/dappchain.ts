@@ -12,16 +12,13 @@ import {
 } from "loom-js";
 
 import { ethers } from "ethers";
-import {
-  coinMultiplier,
-  rinkebyLoomAddress,
-} from "./loom_mainnet";
+import { coinMultiplier, rinkebyLoomAddress } from "./loom_mainnet";
 import {
   IValidator,
   IDelegation,
   ICandidate
 } from "loom-js/dist/contracts/dpos2";
-import { IWithdrawalReceipt } from 'loom-js/dist/contracts/transfer-gateway'
+import { IWithdrawalReceipt } from "loom-js/dist/contracts/transfer-gateway";
 import { sleep } from "loom-js/dist/helpers";
 
 const LoomCoinTransferGateway = Contracts.LoomCoinTransferGateway;
@@ -62,7 +59,6 @@ export const getDAppChainMapperContract = async (
   return mapperContract;
 };
 
-
 /**
  * Given an account object returns the current chain's deployed LoomCoin contract
  * @param account The user's account object
@@ -73,7 +69,6 @@ export const getDAppChainLoomContract = async (
   const coinContract = await Coin.createAsync(account.client, account.address);
   return coinContract;
 };
-
 
 /**
  * Given an account object returns the current chain's deployed LoomCoin TransferGateway contract
@@ -140,7 +135,7 @@ export const loadDAppChainAccount = (
 export const getDAppChainBalance = async (
   account: Account,
   address: string | undefined
-) : Promise<BN> => {
+): Promise<BN> => {
   const coinContract = await getDAppChainLoomContract(account);
 
   // if no address is provided, return our balance
@@ -161,14 +156,16 @@ export const getDAppChainBalance = async (
  * Returns the user's pending withdrawal receipt (or null if there's none)
  * @param account The user's account object
  */
-export const getPendingWithdrawalReceipt = async (account: Account): Promise<IWithdrawalReceipt | null> => {
+export const getPendingWithdrawalReceipt = async (
+  account: Account
+): Promise<IWithdrawalReceipt | null> => {
   const gateway = await getDAppChainGatewayContract(account);
   return gateway.withdrawalReceiptAsync(account.address);
 };
 
 /**
  * Deposits an amount of LOOM tokens to the dappchain gateway and return a signature which can be used to withdraw the same amount from the mainnet gateway.
- * 
+ *
  * @param wallet Instance of ethers wallet (can be initialized either via metamask or via private key)
  * @param account The user's account object
  * @param amount The amount that will be deposited to the DAppChain Gateway (and will be possible to withdraw from the mainnet)
@@ -214,7 +211,7 @@ export const depositCoinToDAppChainGateway = async (
 // DPOS MAPPINGS
 
 /**
- * 
+ *
  * Returns a list of the current validators
  * @param account The user's account object
  */
@@ -226,7 +223,7 @@ export const listValidators = async (
 };
 
 /**
- * 
+ *
  * Returns a list of the current candidates
  * @param account The user's account object
  */
@@ -239,7 +236,7 @@ export const listCandidates = async (
 
 /**
  * Returns the stake a delegator has delegated to a candidate/validator
- * 
+ *
  * @param account The user's account object
  * @param validator The validator's hex addres
  * @param delegator The delegator's hex address
@@ -251,8 +248,10 @@ export const checkDelegations = async (
 ): Promise<IDelegation | null> => {
   const dpos = await getDAppChainDPOSContract(account);
   const validatorAddress = prefixAddress(account.client, validator);
-  const delegatorAddress = delegator ? prefixAddress(account.client, delegator) : account.address
-  console.log(delegatorAddress)
+  const delegatorAddress = delegator
+    ? prefixAddress(account.client, delegator)
+    : account.address;
+  console.log(delegatorAddress);
   const delegation = await dpos.checkDelegationAsync(
     validatorAddress,
     delegatorAddress
@@ -275,7 +274,7 @@ export const claimDelegations = async (
 
 /**
  * Delegates an amount of LOOM tokens to a candidate/validator
- * 
+ *
  * @param account The user's account object
  * @param candidate The candidate's hex address
  * @param amount The amount delegated
@@ -288,15 +287,15 @@ export const delegate = async (
   const coin = await getDAppChainLoomContract(account);
   const dpos = await getDAppChainDPOSContract(account);
   const address = prefixAddress(account.client, candidate);
-  console.log(address)
+  console.log(address);
   await coin.approveAsync(dpos.address, amount);
-  const allowance = await coin.getAllowanceAsync(dpos.address, address)
+  const allowance = await coin.getAllowanceAsync(dpos.address, address);
   await dpos.delegateAsync(address, amount);
 };
 
 /**
  * Undelegates an amount of LOOM tokens from a candidate/validator
- * 
+ *
  * @param account The user's account object
  * @param candidate The candidate's hex address
  * @param amount The amount to undelegate
@@ -325,7 +324,7 @@ const prefixAddress = (client: Client, address: string) => {
 
 /**
  * Maps the user's ETH address to their DAppChain address. This MUST be called before any interaction with the gateways.
- * 
+ *
  * @param account The user's account object
  * @param wallet The User's ethers wallet
  */

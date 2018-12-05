@@ -3,44 +3,13 @@
 import program from "commander";
 import BN from "bn.js";
 
-import {
-  depositCoinToRinkebyGateway,
-  getMainnetBalance,
-  loadMainnetAccount,
-  rinkebyGatewayAddress,
-  coinMultiplier,
-  withdrawCoinFromRinkebyGateway
-} from "./loom_mainnet";
-
-import {
-  getDAppChainBalance,
-  loadDAppChainAccount,
-  mapAccounts,
-  depositCoinToDAppChainGateway,
-  listValidators,
-  listCandidates,
-  checkDelegations,
-  claimDelegations,
-  delegate,
-  undelegate,
-  getPendingWithdrawalReceipt,
-  resolveAddressAsync
-} from "./dappchain";
-
-import { CryptoUtils, Address, LocalAddress } from "loom-js";
+import { DPOSUser, CryptoUtils, LocalAddress } from "loom-js";
 import { config } from "./trudy";
-import { ethers } from "ethers";
+import { coinMultiplier } from "./loom_mainnet";
+import { userInfo } from "os";
 
 // See https://loomx.io/developers/docs/en/testnet-plasma.html#contract-addresses-transfer-gateway
 // for the most up to date address.
-
-const chainId = config.chainId;
-const ethereumEndpoint = config.ethEndpoint;
-const dappchainEndpoint = config.dappchainEndpoint;
-const dappchainPrivateKey = config.dappchainPrivateKey;
-const ethPrivateKey = config.ethPrivateKey;
-
-// LOOM GATEWAY BINDINGS
 
 program
   .command("deposit <amount>")
@@ -48,12 +17,17 @@ program
     "deposit the specified amount of LOOM tokens into the Transfer Gateway"
   )
   .action(async function(amount: string) {
-    const wallet = loadMainnetAccount(ethereumEndpoint, ethPrivateKey);
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
+    );
     try {
-      const tx = await depositCoinToRinkebyGateway(
-        wallet,
-        new BN(amount).mul(coinMultiplier)
-      );
+      const tx = await user.deposit(new BN(amount).mul(coinMultiplier));
       await tx.wait();
       console.log(`${amount} tokens deposited to Ethereum Gateway.`);
       console.log(`Rinkeby tx hash: ${tx.hash}`);
@@ -72,73 +46,54 @@ program
     "Number of seconds to wait for withdrawal to be processed"
   )
   .action(async function(amount: string, options: any) {
-    let account;
+    let user
     try {
-      account = loadDAppChainAccount(
-        dappchainEndpoint,
-        dappchainPrivateKey,
-        chainId
-      );
-      const wallet = loadMainnetAccount(ethereumEndpoint, ethPrivateKey);
-
+    user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
+    );
       const actualAmount = new BN(amount).mul(coinMultiplier);
-      const signature = await depositCoinToDAppChainGateway(
-        wallet,
-        account,
-        actualAmount,
-      );
-      const tx = await withdrawCoinFromRinkebyGateway(
-        wallet,
-        actualAmount,
-        signature
-      );
+      const tx = await user.withdraw(actualAmount)
       await tx.wait();
       console.log(`${amount} tokens withdrawn from Ethereum Gateway.`);
       console.log(`Rinkeby tx hash: ${tx.hash}`);
     } catch (err) {
       console.error(err);
     } finally {
-      if (account) {
-        account.client.disconnect();
-      }
+      if (user)
+        user.disconnect()
     }
   });
 
 program
   .command("resume-withdrawal")
   .description("Resumes a withdrawal from a pending receipt")
-  .action(async function() {
-    let account;
+  .action(async function () {
+    let user;
     try {
-      account = loadDAppChainAccount(
-        dappchainEndpoint,
-        dappchainPrivateKey,
-        chainId
+      user = await DPOSUser.createOfflineUser(
+        config.ethEndpoint,
+        config.ethPrivateKey,
+        config.dappchainEndpoint,
+        config.dappchainPrivateKey,
+        config.chainId,
+        config.loomGatewayEthAddress,
+        config.loomTokenEthAddress
       );
-      const wallet = loadMainnetAccount(ethereumEndpoint, ethPrivateKey);
-      const receipt = await getPendingWithdrawalReceipt(account);
-      if (receipt === null) {
-        console.log("No pending receipt");
-        return;
+      const tx = await user.resumeWithdrawal()
+      if (tx) {
+        await tx.wait();
       }
-
-      const signature = CryptoUtils.bytesToHexAddr(receipt.oracleSignature);
-      const amount = receipt.tokenAmount!;
-      const tx = await withdrawCoinFromRinkebyGateway(
-        wallet,
-        amount,
-        signature
-      );
-      await tx.wait();
-      console.log(
-        `${amount.div(coinMultiplier)} tokens withdrawn from Ethereum Gateway.`
-      );
-      console.log(`Rinkeby tx hash: ${tx.hash}`);
     } catch (err) {
       console.error(err);
     } finally {
-      if (account) {
-        account.client.disconnect();
+      if (user) {
+        user.disconnect();
       }
     }
   });
@@ -147,13 +102,17 @@ program
   .command("receipt")
   .description("Returns the currently pending receipt")
   .action(async function() {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      const receipt = await getPendingWithdrawalReceipt(account);
+      const receipt = await user.getPendingWithdrawalReceipt();
       if (receipt) {
         console.log(`Pending receipt:`);
         console.log("Token owner:", receipt.tokenOwner.toString());
@@ -178,17 +137,24 @@ program
   .command("list-validators")
   .description("Show the current DPoS validators")
   .action(async function() {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      const validators = await listValidators(account);
+      const validators = await user.listValidators();
       console.log(`Current validators:`);
       validators.forEach(v => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
-        console.log("  Address:", LocalAddress.fromPublicKey(v.pubKey).toString());
+        console.log(
+          "  Address:",
+          LocalAddress.fromPublicKey(v.pubKey).toString()
+        );
         console.log("  Power:", v.power);
       });
     } catch (err) {
@@ -200,13 +166,17 @@ program
   .command("list-candidates")
   .description("Show the current DPoS candidates (along with their metadata)")
   .action(async function() {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      const candidates = await listCandidates(account);
+      const candidates = await user.listCandidates();
       console.log(`Current candidates:`);
       candidates.forEach(c => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
@@ -229,21 +199,23 @@ program
   .option("-v, --validator <dappchain b64 address>")
   .option("-d, --delegator <dappchain b64 address>")
   .action(async function(option) {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      const delegation = await checkDelegations(
-        account,
+      const delegation = await user.checkDelegations(
         option.validator,
         option.delegator
       );
       console.log(
-        `Delegation from ${option.delegator} to ${
-          option.validator
-        } is:`, delegation
+        `Delegation from ${option.delegator} to ${option.validator} is:`,
+        delegation
       );
     } catch (err) {
       console.error(err);
@@ -254,17 +226,18 @@ program
   .command("claim-delegations")
   .description("Get back the user rewards")
   .option("-a, --account <account to withdraw the rewards to>")
-  .action(async function(options) {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+  .action(async function() {
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      let withdrawalAddress = options.account
-        ? options.account
-        : account.address;
-      const rewards = await claimDelegations(account, withdrawalAddress);
+      const rewards = await user.claimDelegations();
       console.log(`User claimed back rewards: ${rewards}`);
     } catch (err) {
       console.error(err);
@@ -275,16 +248,20 @@ program
   .command("delegate <amount> <validator>")
   .description("Delegate `amount` to a candidate / validator")
   .action(async function(amount: string, validator: string) {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      const actualAmount = new BN(amount).mul(coinMultiplier)
-      console.log(`Delegating ${actualAmount.toString()} to validator`)
-      await delegate(account, validator, actualAmount);
-      console.log(`Delegated ${actualAmount.toString()} to validator`)
+      const actualAmount = new BN(amount).mul(coinMultiplier);
+      console.log(`Delegating ${actualAmount.toString()} to validator`);
+      await user.delegate(validator, actualAmount);
+      console.log(`Delegated ${actualAmount.toString()} to validator`);
     } catch (err) {
       console.error(err);
     }
@@ -294,13 +271,17 @@ program
   .command("undelegate <amount> <validator>")
   .option("-v, --validator <dappchain b64 address>")
   .action(async function(amount: string, validator: string) {
-    const account = loadDAppChainAccount(
-      dappchainEndpoint,
-      dappchainPrivateKey,
-      chainId
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
     );
     try {
-      await undelegate(account, validator, new BN(amount).mul(coinMultiplier));
+      await user.undelegate(validator, new BN(amount).mul(coinMultiplier));
       console.log(`Undelegated ${amount} LOOM to ${validator}`);
     } catch (err) {
       console.error(err);
@@ -308,28 +289,6 @@ program
   });
 
 // GENERAL DAPPCHAIN/ETH GETTERS
-
-program
-  .command("map-accounts")
-  .description("maps accounts")
-  .action(async function() {
-    let account;
-    try {
-      const wallet = loadMainnetAccount(ethereumEndpoint, ethPrivateKey);
-      account = loadDAppChainAccount(
-        dappchainEndpoint,
-        dappchainPrivateKey,
-        chainId
-      );
-      await mapAccounts(account, wallet);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (account) {
-        account.client.disconnect();
-      }
-    }
-  });
 
 program
   .command("coin-balance")
@@ -343,76 +302,20 @@ program
   )
   .action(async function(options) {
     try {
-      let ownerAddress, balance;
-      if (options.eth) {
-        // Retrieve mainnet balance
-        const wallet = loadMainnetAccount(ethereumEndpoint, ethPrivateKey);
-        ownerAddress = await wallet.getAddress();
-        if (options.account) {
-          ownerAddress =
-            options.account === "gateway" // --account can be 'gateway' for convenience
-              ? rinkebyGatewayAddress
-              : options.account;
-        }
-        balance = await getMainnetBalance(wallet, ownerAddress);
-        balance = balance.div(ethers.utils.parseEther("1"));
-      } else {
-        // Retrieve dappchain balance
-        const account = loadDAppChainAccount(
-          dappchainEndpoint,
-          dappchainPrivateKey,
-          chainId
-        );
-        ownerAddress = account.address
-        try {
-          balance = await getDAppChainBalance(account, options.account);
-        } catch (err) {
-          throw err;
-        } finally {
-          account.client.disconnect();
-        }
-      }
-      console.log(`${ownerAddress} balance is ${balance}`);
+    const user = await DPOSUser.createOfflineUser(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
+    );
+          const balance = await user.getDAppChainBalance(options.account);
+        console.log(`The account's balance is ${balance}`);
     } catch (err) {
       console.error(err);
     }
   });
-
-program
-  .command("resolve <contractName>")
-  .description("Get the contract's address based on name")
-  .action(async function(contractName: string) {
-    let account;
-    try {
-      account = loadDAppChainAccount(
-        dappchainEndpoint,
-        dappchainPrivateKey,
-        chainId
-      );
-      const address = await resolveAddressAsync(account, contractName);
-      console.log(`Contract ${contractName}'s address: ${address}`);
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
-program
-  .command("getblock")
-  .description("Get the contract's address based on name")
-  .action(async function() {
-    let account;
-    try {
-      account = loadDAppChainAccount(
-        dappchainEndpoint,
-        dappchainPrivateKey,
-        chainId
-      );
-      const blk = await account.client.getBlockHeightAsync()
-      console.log(`Blk number: ${blk}`);
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
 
 program.version("0.1.0").parse(process.argv);
