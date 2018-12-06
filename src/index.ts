@@ -133,6 +133,25 @@ program
 // DPOS BINDINGS
 
 program
+  .command("map-accounts")
+  .description("Connects the user's eth/dappchain addresses")
+  .action(async function() {
+    const user = await DPOSUser.createOfflineUserAsync(
+      config.ethEndpoint,
+      config.ethPrivateKey,
+      config.dappchainEndpoint,
+      config.dappchainPrivateKey,
+      config.chainId,
+      config.loomGatewayEthAddress,
+      config.loomTokenEthAddress
+    );
+    try {
+      await user.mapAccounts();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+program
   .command("list-validators")
   .description("Show the current DPoS validators")
   .action(async function() {
@@ -154,7 +173,7 @@ program
           "  Address:",
           LocalAddress.fromPublicKey(v.pubKey).toString()
         );
-        console.log("  Power:", v.power);
+        console.log("  Power:", v.power.toString());
       });
     } catch (err) {
       console.error(err);
