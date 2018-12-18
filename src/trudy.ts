@@ -4,8 +4,8 @@ export const config = {
   ethEndpoint: "https://rinkeby.infura.io",
   dappchainPrivateKey:
     "OED7hbGxMW3xzlRM7JLRyRRvlEJ6wUCG/A6VEpngIyeoXMHT2YqfxHZuKSd8WIx6Dre5PyYXss2qv8rp2PaXuA==",
-  dappchainEndpoint: "https://test-z-asia1.dappchains.com",
-  loomTokenEthAddress: "0xF858C8B28654F018cA08f7C092910Da30A31Ccda",
-  loomGatewayEthAddress: "0x682721650515Bac4b46801E06C3B3848132c78F6",
-  chainId: "asia1"
+  dappchainEndpoint: "http://loomv2b.dappchains.com:46658",
+  loomTokenEthAddress: "0x1108F68d4D02d9770DAafd74002B99a0f1E5969e",
+  loomGatewayEthAddress: "0x34BF9b131bF78ce7fdf0c7AE0F6D3621B7ce998e",
+  chainId: "loomv2b"
 };

@@ -7,6 +7,7 @@ import { DPOSUser, CryptoUtils, LocalAddress } from "loom-js";
 import { config } from "./trudy";
 import { coinMultiplier } from "./loom_mainnet";
 import { userInfo } from "os";
+import { ICandidate } from "loom-js/dist/contracts/dpos";
 
 // See https://loomx.io/developers/docs/en/testnet-plasma.html#contract-addresses-transfer-gateway
 // for the most up to date address.
@@ -146,7 +147,7 @@ program
       config.loomTokenEthAddress
     );
     try {
-      await user.mapAccounts();
+      await user.mapAccountsAsync();
     } catch (err) {
       console.error(err);
     }
@@ -168,12 +169,16 @@ program
       const validators = await user.listValidatorsAsync();
       console.log(`Current validators:`);
       validators.forEach(v => {
-        console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
-        console.log(
-          "  Address:",
-          LocalAddress.fromPublicKey(v.pubKey).toString()
-        );
-        console.log("  Power:", v.power.toString());
+         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
+         console.log(
+           "  Address:",
+           v.address.toString()
+         );
+         console.log(`  Upblock / block count : ${v.upblockCount} / ${v.blockCount}`)
+         console.log("  Slash percentage:", v.slashPct)
+         console.log("  Distribution total:", v.distributionTotal)
+         console.log("  Delegation total:", v.delegationTotal)
+         console.log("\n")
       });
     } catch (err) {
       console.error(err);
@@ -314,7 +319,6 @@ program
   .description(
     "display the current DAppChain ERC20 token balance for an account"
   )
-  .option("--eth", "Show the Ethereum ERC20 balance instead")
   .option(
     "-a, --account <dappchain b64 address | ethereum hex address> | gateway",
     "Account address"
@@ -336,5 +340,52 @@ program
       console.error(err);
     }
   });
+
+program
+  .command("my-delegations")
+  .description(
+    "display the user's delegations to all candidates"
+  )
+  .action(async function() {
+    try {
+      const user = await DPOSUser.createOfflineUserAsync(
+        config.ethEndpoint,
+        config.ethPrivateKey,
+        config.dappchainEndpoint,
+        config.dappchainPrivateKey,
+        config.chainId,
+        config.loomGatewayEthAddress,
+        config.loomTokenEthAddress
+      );
+
+      const candidates = await user.listCandidatesAsync()
+      for (let i in candidates) {
+        const c = candidates[i]
+        const address = c.address
+        console.log(`Validator: ${address}:`)
+        try { 
+         const delegation = await user.checkDelegationsAsync(address.toString().split(':')[1])
+         if (delegation === null) {
+            console.log(` No delegation`)
+         } else {
+            console.log(`  Amount: ${delegation.amount}`)
+            console.log(`  Update Amount: ${delegation.updateAmount}`)
+            console.log(`  Height: ${delegation.height}`)
+            console.log(`  Locktime: ${delegation.lockTime}`)
+            console.log(`  State: ${delegation.state}`)
+         }
+
+        } catch (e) {
+          console.log("No delegation")
+        }
+
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+
+
 
 program.version("0.1.0").parse(process.argv);
