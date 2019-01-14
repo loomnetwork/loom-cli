@@ -3,8 +3,8 @@
 import program from "commander";
 import BN from "bn.js";
 
-import { DPOSUser, CryptoUtils, LocalAddress } from "loom-js";
-import { config } from "./trudy";
+import { DPOSUser, CryptoUtils } from "loom-js";
+import { config } from "./trudy_loomv2b";
 import { coinMultiplier } from "./loom_mainnet";
 import { userInfo } from "os";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
@@ -177,7 +177,7 @@ program
          console.log(`  Upblock / block count : ${v.upblockCount} / ${v.blockCount}`)
          console.log("  Slash percentage:", v.slashPct)
          console.log("  Distribution total:", v.distributionTotal)
-         console.log("  Delegation total:", v.delegationTotal)
+         console.log("  Delegation total:", v.delegationTotal.toString())
          console.log("\n")
       });
     } catch (err) {
@@ -269,9 +269,9 @@ program
   });
 
 program
-  .command("delegate <amount> <validator>")
+  .command("delegate <amount> <validator> <tier>")
   .description("Delegate `amount` to a candidate / validator")
-  .action(async function(amount: string, validator: string) {
+  .action(async function(amount: string, validator: string, tier: number) {
     const user = await DPOSUser.createOfflineUserAsync(
       config.ethEndpoint,
       config.ethPrivateKey,
@@ -284,7 +284,7 @@ program
     try {
       const actualAmount = new BN(amount).mul(coinMultiplier);
       console.log(`Delegating ${actualAmount.toString()} to validator`);
-      await user.delegateAsync(validator, actualAmount);
+      await user.delegateAsync(validator, actualAmount, tier);
       console.log(`Delegated ${actualAmount.toString()} to validator`);
     } catch (err) {
       console.error(err);

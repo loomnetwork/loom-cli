@@ -8,7 +8,7 @@ import {
   LocalAddress,
   CryptoUtils,
   Contracts,
-  EthersSigner
+  EthersSigner,
 } from "loom-js";
 
 import { ethers } from "ethers";
@@ -140,6 +140,7 @@ export const getDAppChainBalance = async (
 
   // if no address is provided, return our balance
   if (address === undefined) {
+  // @ts-ignore
     return coinContract.getBalanceOfAsync(account.address);
   }
 
@@ -149,6 +150,7 @@ export const getDAppChainBalance = async (
     LocalAddress.fromPublicKey(pubKey)
   );
   const balance = await coinContract.getBalanceOfAsync(callerAddress);
+  // @ts-ignore
   return balance;
 };
 
@@ -282,7 +284,8 @@ export const claimDelegations = async (
 export const delegate = async (
   account: Account,
   candidate: string,
-  amount: BN
+  amount: BN,
+  tier: number
 ) => {
   const coin = await getDAppChainLoomContract(account);
   const dpos = await getDAppChainDPOSContract(account);
@@ -290,7 +293,7 @@ export const delegate = async (
   console.log(address);
   await coin.approveAsync(dpos.address, amount);
   const allowance = await coin.getAllowanceAsync(dpos.address, address);
-  await dpos.delegateAsync(address, amount);
+  await dpos.delegateAsync(address, amount, tier);
 };
 
 /**
@@ -340,6 +343,7 @@ export const mapAccounts = async (account: Account, wallet: ethers.Signer) => {
   console.log(
     `mapping ${ethereumAddress.toString()} to ${account.address.toString()}`
   );
+  // @ts-ignore
   const signer = new EthersSigner(wallet);
   await mapperContract.addIdentityMappingAsync(
     account.address,
