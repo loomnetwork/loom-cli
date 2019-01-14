@@ -169,16 +169,15 @@ program
       const validators = await user.listValidatorsAsync();
       console.log(`Current validators:`);
       validators.forEach(v => {
-         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
-         console.log(
-           "  Address:",
-           v.address.toString()
-         );
-         console.log(`  Upblock / block count : ${v.upblockCount} / ${v.blockCount}`)
-         console.log("  Slash percentage:", v.slashPct)
-         console.log("  Distribution total:", v.distributionTotal)
-         console.log("  Delegation total:", v.delegationTotal.toString())
-         console.log("\n")
+        console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
+        console.log("  Address:", v.address.toString());
+        console.log(
+          `  Upblock / block count : ${v.upblockCount} / ${v.blockCount}`
+        );
+        console.log("  Slash percentage:", v.slashPct);
+        console.log("  Distribution total:", v.distributionTotal);
+        console.log("  Delegation total:", v.delegationTotal.toString());
+        console.log("\n");
       });
     } catch (err) {
       console.error(err);
@@ -232,15 +231,20 @@ program
       config.loomTokenEthAddress
     );
     try {
-      console.log(option.validator, option.delegator);
       const delegation = await user.checkDelegationsAsync(
         option.validator,
         option.delegator
       );
-      console.log(
-        `Delegation from ${option.delegator} to ${option.validator} is:`,
-        delegation
-      );
+      if (delegation !== null) {
+        console.log(`  Validator: ${delegation.delegator.toString()}`);
+        console.log(`  Delegator: ${delegation.validator.toString()}`);
+        console.log(`  Amount: ${delegation.amount}`);
+        console.log(`  Update Amount: ${delegation.updateAmount}`);
+        console.log(`  Height: ${delegation.height}`);
+        console.log(`  Locktime: ${delegation.lockTime}`);
+        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
+        console.log(`  State: ${delegation.state}`);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -271,7 +275,7 @@ program
 program
   .command("delegate <amount> <validator> <tier>")
   .description("Delegate `amount` to a candidate / validator")
-  .action(async function(amount: string, validator: string, tier: number) {
+  .action(async function(amount: string, validator: string, tier: string) {
     const user = await DPOSUser.createOfflineUserAsync(
       config.ethEndpoint,
       config.ethPrivateKey,
@@ -284,7 +288,7 @@ program
     try {
       const actualAmount = new BN(amount).mul(coinMultiplier);
       console.log(`Delegating ${actualAmount.toString()} to validator`);
-      await user.delegateAsync(validator, actualAmount, tier);
+      await user.delegateAsync(validator, actualAmount, parseInt(tier));
       console.log(`Delegated ${actualAmount.toString()} to validator`);
     } catch (err) {
       console.error(err);
@@ -343,9 +347,7 @@ program
 
 program
   .command("my-delegations")
-  .description(
-    "display the user's delegations to all candidates"
-  )
+  .description("display the user's delegations to all candidates")
   .action(async function() {
     try {
       const user = await DPOSUser.createOfflineUserAsync(
@@ -358,34 +360,35 @@ program
         config.loomTokenEthAddress
       );
 
-      const candidates = await user.listCandidatesAsync()
+      const candidates = await user.listCandidatesAsync();
       for (let i in candidates) {
-        const c = candidates[i]
-        const address = c.address
-        console.log(`Validator: ${address}:`)
-        try { 
-         const delegation = await user.checkDelegationsAsync(address.toString().split(':')[1])
-         if (delegation === null) {
-            console.log(` No delegation`)
-         } else {
-            console.log(`  Amount: ${delegation.amount}`)
-            console.log(`  Update Amount: ${delegation.updateAmount}`)
-            console.log(`  Height: ${delegation.height}`)
-            console.log(`  Locktime: ${delegation.lockTime}`)
-            console.log(`  State: ${delegation.state}`)
-         }
-
+        const c = candidates[i];
+        const address = c.address;
+        console.log(`Validator: ${address}:`);
+        try {
+          const delegation = await user.checkDelegationsAsync(
+            address.toString().split(":")[1]
+          );
+          if (delegation === null) {
+            console.log(` No delegation`);
+          } else {
+            console.log(`  Validator: ${delegation.delegator.toString()}`);
+            console.log(`  Delegator: ${delegation.validator.toString()}`);
+            console.log(`  Amount: ${delegation.amount}`);
+            console.log(`  Update Amount: ${delegation.updateAmount}`);
+            console.log(`  Height: ${delegation.height}`);
+            console.log(`  Locktime: ${delegation.lockTime}`);
+            console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
+            console.log(`  State: ${delegation.state}`);
+          }
         } catch (e) {
-          console.log("No delegation")
+          console.log("No delegation");
+          console.log(e);
         }
-
       }
     } catch (err) {
       console.error(err);
     }
   });
-
-
-
 
 program.version("0.1.0").parse(process.argv);

@@ -8,7 +8,7 @@ import {
   LocalAddress,
   CryptoUtils,
   Contracts,
-  EthersSigner,
+  EthersSigner
 } from "loom-js";
 
 import { ethers } from "ethers";
@@ -140,7 +140,7 @@ export const getDAppChainBalance = async (
 
   // if no address is provided, return our balance
   if (address === undefined) {
-  // @ts-ignore
+    // @ts-ignore
     return coinContract.getBalanceOfAsync(account.address);
   }
 
