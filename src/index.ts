@@ -4,9 +4,8 @@ import program from "commander";
 import BN from "bn.js";
 
 import { DPOSUser, CryptoUtils } from "loom-js";
-import { config } from "./trudy_loomv2b";
+import { config } from "./trudy_oracle_devnet";
 import { coinMultiplier } from "./loom_mainnet";
-import { userInfo } from "os";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 
 // See https://loomx.io/developers/docs/en/testnet-plasma.html#contract-addresses-transfer-gateway
@@ -25,7 +24,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
@@ -56,7 +56,8 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress
+        config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
       );
       const actualAmount = new BN(amount).mul(coinMultiplier);
       const tx = await user.withdrawAsync(actualAmount);
@@ -83,7 +84,8 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress
+        config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
       );
       const tx = await user.resumeWithdrawalAsync();
       if (tx) {
@@ -109,7 +111,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const receipt = await user.getPendingWithdrawalReceiptAsync();
@@ -144,7 +147,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       await user.mapAccountsAsync();
@@ -163,7 +167,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const validators = await user.listValidatorsAsync();
@@ -195,7 +200,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const candidates = await user.listCandidatesAsync();
@@ -228,7 +234,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const delegation = await user.checkDelegationsAsync(
@@ -262,7 +269,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const rewards = await user.claimDelegationsAsync();
@@ -283,7 +291,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       const actualAmount = new BN(amount).mul(coinMultiplier);
@@ -306,7 +315,8 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress
+      config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
     );
     try {
       await user.undelegateAsync(validator, new BN(amount).mul(coinMultiplier));
@@ -336,7 +346,8 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress
+        config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
       );
       const balance = await user.getDAppChainBalanceAsync(options.account);
       console.log(`The account's balance is ${balance}`);
@@ -357,7 +368,8 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress
+        config.loomTokenEthAddress,
+		config.validatorManagerEthAddress
       );
 
       const candidates = await user.listCandidatesAsync();

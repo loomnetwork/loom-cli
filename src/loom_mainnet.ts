@@ -1,6 +1,6 @@
 import { ethers, ContractTransaction } from "ethers";
 import BN from "bn.js";
-import { config } from "./trudy_loomv2b";
+import { config } from "./trudy_oracle_devnet";
 import Web3 from "web3";
 
 // @todo convert to ethers ABI
