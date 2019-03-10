@@ -5023,10 +5023,9 @@ log-update@^2.3.0:
     cli-cursor "^2.0.0"
     wrap-ansi "^3.0.1"
 
-loom-js@^1.37.3:
-  version "1.37.3"
-  resolved "https://registry.yarnpkg.com/loom-js/-/loom-js-1.37.3.tgz#12f66889d71a4654fbb48f220361586812ac96ab"
-  integrity sha512-WTVbA8D85Z2QXdQgi8pKqIZbq0FXrS2H06vxFOZDfn0hgwHyKGA+twymw9ADkRsNWrLSFL7AtY1gmF809KOjYQ==
+"loom-js@https://github.com/loomnetwork/loom-js#vmc-new-gateway":
+  version "1.46.0"
+  resolved "https://github.com/loomnetwork/loom-js#ea3658647f94f95112d0fe3aabc3c9dbdfd4e0df"
   dependencies:
     abi-decoder "^1.2.0"
     axios "^0.18.0"
