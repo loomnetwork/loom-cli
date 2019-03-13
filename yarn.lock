@@ -5025,7 +5025,7 @@ log-update@^2.3.0:
 
 "loom-js@https://github.com/loomnetwork/loom-js#vmc-new-gateway":
   version "1.46.0"
-  resolved "https://github.com/loomnetwork/loom-js#ea3658647f94f95112d0fe3aabc3c9dbdfd4e0df"
+  resolved "https://github.com/loomnetwork/loom-js#50ced37412bdfb7df20909d5cdd3716cbe6fcb10"
   dependencies:
     abi-decoder "^1.2.0"
     axios "^0.18.0"
