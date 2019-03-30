@@ -5,8 +5,8 @@ export const config = {
   dappchainPrivateKey:
   "POcupxN+lMdekrgztzNtLOiyT0UUs+UdkQiC/lRKV4kIRQy+j86BSajcfZ+EG5WXhMHdsKf5DU3oRL+SjC68Nw==",
   dappchainEndpoint: "http://13.232.228.220:46658",
-  loomTokenEthAddress: "0x88aEefFAe4c4Ad009cDaDdcE52A4373b2F026af4",
-  loomGatewayEthAddress: "0x426de37D73B0B768648335A5e1243e46b3a5E0A9",
-  validatorManagerEthAddress: "0xfba125a08a1e93bf814dbcab57aa9a2f811b8839",
+  loomTokenEthAddress: "0x582DD5C8f87A1A4C49A03049eC1E7d252895BaFA",
+  loomGatewayEthAddress: "0x5584e1fF59724eE4e814B8B12088beD71E535FB2",
+  validatorManagerEthAddress: "0x51e403b4454115694a3deb4c9047f3a4ef636292",
   chainId: "dev-oracle"
 };
