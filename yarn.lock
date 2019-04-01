@@ -5023,9 +5023,9 @@ log-update@^2.3.0:
     cli-cursor "^2.0.0"
     wrap-ansi "^3.0.1"
 
-"loom-js@https://github.com/loomnetwork/loom-js#multisig-gateway-withdrawal":
+"loom-js@https://github.com/loomnetwork/loom-js#dist-multisig-gateway":
   version "1.49.4"
-  resolved "https://github.com/loomnetwork/loom-js#47a052551ff234033cb0c36fda1d68b1a39aa0e2"
+  resolved "https://github.com/loomnetwork/loom-js#474f02fb97931632db4df5217862e6dbe3708d14"
   dependencies:
     abi-decoder "^1.2.0"
     axios "^0.18.0"
