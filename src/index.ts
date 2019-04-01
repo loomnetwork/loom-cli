@@ -3,13 +3,14 @@
 import program from "commander";
 import BN from "bn.js";
 
-import { DPOSUser, CryptoUtils } from "loom-js";
+import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { config } from "./trudy_oracle_devnet";
-import { coinMultiplier } from "./loom_mainnet";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 
 // See https://loomx.io/developers/docs/en/testnet-plasma.html#contract-addresses-transfer-gateway
 // for the most up to date address.
+
+const coinMultiplier = new BN(10).pow(new BN(18))
 
 program
   .command("deposit <amount>")
@@ -24,8 +25,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+      GatewayVersion.SINGLESIG
     );
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
@@ -56,8 +56,7 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
       );
       const actualAmount = new BN(amount).mul(coinMultiplier);
       const tx = await user.withdrawAsync(actualAmount);
@@ -84,8 +83,7 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
       );
       const tx = await user.resumeWithdrawalAsync();
       if (tx) {
@@ -111,8 +109,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
       const receipt = await user.getPendingWithdrawalReceiptAsync();
@@ -121,7 +118,8 @@ program
         console.log("Token owner:", receipt.tokenOwner.toString());
         console.log("Contract:", receipt.tokenContract.toString());
         console.log("Token kind:", receipt.tokenKind);
-        console.log("Nonce:", receipt.withdrawalNonce);
+        console.log("Nonce:", receipt.withdrawalNonce.toString());
+        console.log("Amount:", receipt.tokenAmount!.toString());
         console.log(
           "Signature:",
           CryptoUtils.bytesToHexAddr(receipt.oracleSignature)
@@ -147,12 +145,14 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
+        console.log('trying to map acc')
       await user.mapAccountsAsync();
+        console.log('mapped acc')
     } catch (err) {
+    console.log("got err")
       console.error(err);
     }
   });
@@ -167,8 +167,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
       const validators = await user.listValidatorsAsync();
@@ -200,8 +199,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
       const candidates = await user.listCandidatesAsync();
@@ -234,8 +232,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
       const delegation = await user.checkDelegationsAsync(
@@ -269,8 +266,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
     );
     try {
       const rewards = await user.claimDelegationsAsync();
@@ -291,8 +287,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+      GatewayVersion.SINGLESIG
     );
     try {
       const actualAmount = new BN(amount).mul(coinMultiplier);
@@ -315,8 +310,7 @@ program
       config.dappchainPrivateKey,
       config.chainId,
       config.loomGatewayEthAddress,
-      config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+      GatewayVersion.SINGLESIG
     );
     try {
       await user.undelegateAsync(validator, new BN(amount).mul(coinMultiplier));
@@ -346,8 +340,7 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
       );
       const balance = await user.getDAppChainBalanceAsync(options.account);
       console.log(`The account's balance is ${balance}`);
@@ -368,8 +361,7 @@ program
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        config.loomTokenEthAddress,
-		config.validatorManagerEthAddress
+        GatewayVersion.SINGLESIG
       );
 
       const candidates = await user.listCandidatesAsync();
