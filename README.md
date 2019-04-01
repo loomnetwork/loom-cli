@@ -29,3 +29,28 @@ DPoS / Transfer Gateway CLI
 - `delegate <amount> <validator>`: Lock up `amount` and delegate it to `validator`
 - `undelegate <amount> <validator>`: Unbond `amount` from `validator`
 
+## Endpoints
+
+### ethEndpoint:
+
+1. https://rinkeby.infura.io/<APIKey>
+2. https://mainnet.infura.io/<APIKey>
+3. http://localhost:8545 for local deployments
+4. Your node
+
+### dappchainEndpoint:
+
+1. https://plasma.dappchains.com, chainId: default
+2. https://test-z-asia1.dappchains.com, chainId: asia1
+3. http://localhost:46658, chainId: default
+4. Your node
+
+## Keys
+
+The DappChainKey corresponds to the mnemonic `crater now gesture wish very major team share other strike month seminar` for using the dashboard. As a result, if you want to reuse any of the actions that you made with the CLI in the dashboard, you'll have to import the `ethPrivateKey` to metamask, and input that mnemonic in the dashboard when logging in. 
+
+The ethereum key is configured to be one with a lot of Ether and Loom tokens for the ganache network that's distributed with `transfer-gateway-v2`
+
+## Loom Gateway Address
+
+That's the address used to interact with the loom gateway. The client software infers the loom token address and the validator manager contract address from that. It's currently set to the address the ERC20Gateway contract gets deployed to when you run the migrations inside `https://www.github.com/loomnetwork/transfer-gateway-v2/mainnet`.
