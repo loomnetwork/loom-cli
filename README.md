@@ -1,6 +1,14 @@
 # loom-cli
 DPoS / Transfer Gateway CLI
 
+## Usage
+
+```
+yarn install
+yarn build
+node dist/index.js -c src/config.json list-validators
+```
+
 ## General Bindings
 
 - `map-accounts`: Connects the user's dappchain/ethereum keys together. **THIS MUST BE EXECUTED WHEN CONNECTING A NEW KEYPAIR TO THE DAPPCHAIN**
