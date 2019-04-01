@@ -1,0 +1,13 @@
+{
+  "ethPrivateKey":
+    "0xDE03930EA2DAB535A1717BE8B5249E14388F0B9836DE8CF3C9299AEB25EDAD98",
+  "dappchainPrivateKey":
+  "POcupxN+lMdekrgztzNtLOiyT0UUs+UdkQiC/lRKV4kIRQy+j86BSajcfZ+EG5WXhMHdsKf5DU3oRL+SjC68Nw==",
+
+  "ethEndpoint": "https://rinkeby.infura.io/5Ic91y0T9nLh6qUg33K0",
+  "dappchainEndpoint": "http://plasma.dappchains.com",
+
+  "loomGatewayEthAddress": "0x426de37D73B0B768648335A5e1243e46b3a5E0A9",
+
+  "chainId": "default"
+}
