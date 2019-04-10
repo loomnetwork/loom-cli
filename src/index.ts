@@ -1,14 +1,8 @@
-#!/usr/bin/env node
-
 import program from "commander";
 import BN from "bn.js";
 
 import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
-
-// See https://loomx.io/developers/docs/en/testnet-plasma.html#contract-addresses-transfer-gateway
-// for the most up to date address.
-
 const coinMultiplier = new BN(10).pow(new BN(18))
 
 program
@@ -129,6 +123,21 @@ program
       console.error(err);
     }
   });
+
+program
+  .command("map-accounts")
+  .description("Connects the user's eth/dappchain addresses")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+        console.log('trying to map acc')
+      await user.mapAccountsAsync();
+        console.log('mapped acc')
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
 program
   .command("list-validators")
   .description("Show the current DPoS validators")
@@ -204,6 +213,19 @@ program
   });
 
 program
+  .command("check-rewards")
+  .description("Get back the user rewards")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+      const rewards = await user.checkRewardsAsync()
+      console.log(`User unclaimed rewards: ${rewards}`);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+program
   .command("claim-delegations")
   .description("Get back the user rewards")
   .option("-a, --account <account to withdraw the rewards to>")
@@ -259,8 +281,9 @@ program
   .action(async function(options) {
     const user = await createUser(config)
     try {
-      const balance = await user.getDAppChainBalanceAsync(options.account);
-      console.log(`The account's balance is ${balance}`);
+      const dappchainBalance = await user.getDAppChainBalanceAsync(options.account);
+      const mainnetBalance = await user.ethereumLoom.balanceOf(user.ethAddress)
+      console.log(`The account's dappchain balance is\nDappchain: ${dappchainBalance}\nMainnet:${mainnetBalance} `);
     } catch (err) {
       console.error(err);
     }
@@ -272,32 +295,17 @@ program
   .action(async function() {
     const user = await createUser(config)
     try {
-      const candidates = await user.listCandidatesAsync();
-      for (let i in candidates) {
-        const c = candidates[i];
-        const address = c.address;
-        console.log(`Validator: ${address}:`);
-        try {
-          const delegation = await user.checkDelegationsAsync(
-            address.toString().split(":")[1]
-          );
-          if (delegation === null) {
-            console.log(` No delegation`);
-          } else {
-            console.log(`  Validator: ${delegation.delegator.toString()}`);
-            console.log(`  Delegator: ${delegation.validator.toString()}`);
-            console.log(`  Amount: ${delegation.amount}`);
-            console.log(`  Update Amount: ${delegation.updateAmount}`);
-            console.log(`  Height: ${delegation.height}`);
-            console.log(`  Locktime: ${delegation.lockTime}`);
-            console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
-            console.log(`  State: ${delegation.state}`);
-          }
-        } catch (e) {
-          console.log("No delegation");
-          console.log(e);
-        }
-      }
+      const delegations = await user.listDelegatorDelegations()
+      for (const delegation of delegations.delegationsArray) {
+        console.log(`  Validator: ${delegation.delegator.toString()}`);
+        console.log(`  Delegator: ${delegation.validator.toString()}`);
+        console.log(`  Amount: ${delegation.amount}`);
+        console.log(`  Update Amount: ${delegation.updateAmount}`);
+        console.log(`  Height: ${delegation.height}`);
+        console.log(`  Locktime: ${delegation.lockTime}`);
+        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
+        console.log(`  State: ${delegation.state}`);
+      } 
     } catch (err) {
       console.error(err);
     }

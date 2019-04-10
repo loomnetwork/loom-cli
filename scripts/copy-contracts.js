@@ -3,5 +3,3 @@
 const shell = require('shelljs')
 const os = require('os')
 const path = require('path')
-
-shell.cp('./src/*.json', './dist/')
