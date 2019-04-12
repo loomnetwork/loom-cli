@@ -3,10 +3,11 @@
 import program from "commander";
 import BN from "bn.js";
 
-import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
+import { Address, DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 const coinMultiplier = new BN(10).pow(new BN(18))
 import fs from 'fs'
+import { equal } from "assert";
 
 program
     .version('0.1.0')
@@ -37,15 +38,31 @@ program
     const user = await createUser(config)
     try {
       let rewards = []
+      let lean_rewards = []
       const data = require(path)
         for (const d of data) {
-            const owner = d.delegator
+            let owner = d.delegator
             let actual_data = d
-            d.actual_reward = await user.checkRewardsAsync(owner)
+            let actual_reward : BN;
+            try {
+                actual_reward = await user.checkRewardsAsync(owner)
+            } catch (e) {
+                actual_reward = new BN(0)
+            }
+            console.log(`${owner} -> ${actual_reward}`)
+            // @ts-ignore
+            d.actual_reward = actual_reward.toString()
             rewards.push(d)
+            if (actual_reward.eq(new BN(0))) {
+                owner = Address.fromString(`default:${owner}`)
+                const mapping = await user.addressMapper!.getMappingAsync(owner)
+                const lean = {'user': mapping.to.local.toString(), 'amount': d.expected_reward}
+                console.log(lean)
+                lean_rewards.push(lean)
+            }
         }
-      console.log(rewards)
       fs.writeFileSync("actual_rewards", JSON.stringify(rewards))
+      fs.writeFileSync("lean_rewards.json", JSON.stringify(lean_rewards))
     } catch (err) {
       console.error(err);
     }
@@ -261,12 +278,12 @@ program
   });
 
 program
-  .command("check-rewards")
+    .command("check-rewards <address>")
   .description("Get back the user rewards")
-  .action(async function() {
+  .action(async function(address?: string) {
     const user = await createUser(config)
     try {
-      const rewards = await user.checkRewardsAsync()
+      const rewards = await user.checkRewardsAsync(address)
       console.log(`User unclaimed rewards: ${rewards}`);
     } catch (err) {
       console.error(err);
