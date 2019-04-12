@@ -1,8 +1,8 @@
 {
   "ethPrivateKey":
-    "0xe8445efa4e3349c3c74fd6689553f93b55aca723115fb777e1e6f4db2a0a82ca",
+    "0x51FC4C3B4E80E05712F0EA064B29A37C5706F34500FAFBD0916DFA862A0C7AFE",
   "dappchainPrivateKey":
-  "iODQtn4HpI9XdudhVSOlPxT1a8LugtCcpSa/0ir2nr2+m0zMRsUZtz6+s5DvoF9F8E6XPfsQSQ4d16C+umbbjA==",
+  "3dkzVUxZuPYAH92Y7q8pfIFVSycMC4HlG9s4b/T0O+Kl7crj97OmdtZqetJW76wIXCiHMbDi03tdoFRDuZlFLw==",
 
   "ethEndpoint": "https://rinkeby.infura.io",
   "dappchainEndpoint": "http://test-z-us1.dappchains.com:80",
