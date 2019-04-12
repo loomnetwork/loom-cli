@@ -1,9 +1,12 @@
+#! /usr/bin/env node
+
 import program from "commander";
 import BN from "bn.js";
 
 import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 const coinMultiplier = new BN(10).pow(new BN(18))
+import fs from 'fs'
 
 program
     .version('0.1.0')
@@ -13,6 +16,7 @@ program
 const config = require(program.config)
 
 const createUser = async (config: any) : Promise<DPOSUser> => {
+    console.log("creating user")
     return DPOSUser.createOfflineUserAsync(
         config.ethEndpoint,
         config.ethPrivateKey,
@@ -23,6 +27,29 @@ const createUser = async (config: any) : Promise<DPOSUser> => {
         GatewayVersion.SINGLESIG
     );
 }
+
+program
+  .command("expected-rewards <path>")
+  .description(
+    "finds the expected rewards given a json file for a user with their loom address"
+  )
+  .action(async function(path: string) {
+    const user = await createUser(config)
+    try {
+      let rewards = []
+      const data = require(path)
+        for (const d of data) {
+            const owner = d.delegator
+            let actual_data = d
+            d.actual_reward = await user.checkRewardsAsync(owner)
+            rewards.push(d)
+        }
+      console.log(rewards)
+      fs.writeFileSync("actual_rewards", JSON.stringify(rewards))
+    } catch (err) {
+      console.error(err);
+    }
+  });
 
 program
   .command("deposit <amount>")
@@ -139,6 +166,23 @@ program
   });
 
 program
+  .command("validator-addresses")
+  .description("Show the current DPoS validators")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+      const validators = await user.listValidatorsAsync();
+      console.log(`Current validators:`);
+      validators.forEach(v => {
+        console.log(v.address.local.toChecksumString());
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+
+program
   .command("list-validators")
   .description("Show the current DPoS validators")
   .action(async function() {
@@ -154,6 +198,9 @@ program
         );
         console.log("  Slash percentage:", v.slashPct);
         console.log("  Distribution total:", v.distributionTotal);
+        console.log("  Delegation total:", v.delegationTotal.toString());
+        console.log("  Whitelist Amount:", v.whitelistAmount.toString());
+        console.log("  Whitelist LocktimeTier:", v.whitelistLockTime.toString());
         console.log("  Delegation total:", v.delegationTotal.toString());
         console.log("\n");
       });
@@ -177,6 +224,7 @@ program
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
         console.log("  Website:", c.website);
+        console.log("\n");
       });
     } catch (err) {
       console.error(err);
