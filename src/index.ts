@@ -1,7 +1,7 @@
 import program from "commander";
 import BN from "bn.js";
 
-import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
+import { DPOSUserV3 as DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 const coinMultiplier = new BN(10).pow(new BN(18))
 
@@ -13,15 +13,15 @@ program
 const config = require(program.config)
 
 const createUser = async (config: any) : Promise<DPOSUser> => {
-    return DPOSUser.createOfflineUserAsync(
-        config.ethEndpoint,
-        config.ethPrivateKey,
-        config.dappchainEndpoint,
-        config.dappchainPrivateKey,
-        config.chainId,
-        config.loomGatewayEthAddress,
-        GatewayVersion.SINGLESIG
-    );
+    return DPOSUser.createOfflineUserAsync({
+        ethEndpoint: config.ethEndpoint,
+        ethereumPrivateKey: config.ethPrivateKey,
+        dappchainEndpoint: config.dappchainEndpoint,
+        dappchainPrivateKey: config.dappchainPrivateKey,
+        chainId: config.chainId,
+        gatewayAddress: config.loomGatewayEthAddress,
+        version: GatewayVersion.SINGLESIG
+    });
 }
 
 program
@@ -149,11 +149,7 @@ program
       validators.forEach(v => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
         console.log("  Address:", v.address.toString());
-        console.log(
-          `  Upblock / block count : ${v.upblockCount} / ${v.blockCount}`
-        );
         console.log("  Slash percentage:", v.slashPct);
-        console.log("  Distribution total:", v.distributionTotal);
         console.log("  Delegation total:", v.delegationTotal.toString());
         console.log("\n");
       });
@@ -193,20 +189,19 @@ program
   .action(async function(option) {
     const user = await createUser(config)
     try {
-      const delegation = await user.checkDelegationsAsync(
+      const delegations = await user.checkDelegationsAsync(
         option.validator,
         option.delegator
       );
-      if (delegation !== null) {
+        delegations!.delegationsArray.forEach(delegation => {
         console.log(`  Validator: ${delegation.delegator.toString()}`);
         console.log(`  Delegator: ${delegation.validator.toString()}`);
         console.log(`  Amount: ${delegation.amount}`);
         console.log(`  Update Amount: ${delegation.updateAmount}`);
-        console.log(`  Height: ${delegation.height}`);
         console.log(`  Locktime: ${delegation.lockTime}`);
         console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
         console.log(`  State: ${delegation.state}`);
-      }
+        })
     } catch (err) {
       console.error(err);
     }
@@ -228,12 +223,11 @@ program
 program
   .command("claim-delegations")
   .description("Get back the user rewards")
-  .option("-a, --account <account to withdraw the rewards to>")
   .action(async function() {
     const user = await createUser(config)
     try {
-      const rewards = await user.claimDelegationsAsync();
-      console.log(`User claimed back rewards: ${rewards}`);
+        const rewards = await user.claimRewardsAsync()
+        console.log(`User claimed back rewards: ${rewards}`);
     } catch (err) {
       console.error(err);
     }
@@ -255,12 +249,12 @@ program
   });
 
 program
-  .command("undelegate <amount> <validator>")
+  .command("undelegate <amount> <validator> <index>")
   .option("-v, --validator <dappchain b64 address>")
-  .action(async function(amount: string, validator: string) {
+  .action(async function(amount: string, validator: string, index: number) {
     const user = await createUser(config)
     try {
-      await user.undelegateAsync(validator, new BN(amount).mul(coinMultiplier));
+      await user.undelegateAsync(validator, new BN(amount).mul(coinMultiplier), index);
       console.log(`Undelegated ${amount} LOOM to ${validator}`);
     } catch (err) {
       console.error(err);
@@ -295,13 +289,12 @@ program
   .action(async function() {
     const user = await createUser(config)
     try {
-      const delegations = await user.listDelegatorDelegations()
+      const delegations = await user.checkAllDelegationsAsync()
       for (const delegation of delegations.delegationsArray) {
         console.log(`  Validator: ${delegation.delegator.toString()}`);
         console.log(`  Delegator: ${delegation.validator.toString()}`);
         console.log(`  Amount: ${delegation.amount}`);
         console.log(`  Update Amount: ${delegation.updateAmount}`);
-        console.log(`  Height: ${delegation.height}`);
         console.log(`  Locktime: ${delegation.lockTime}`);
         console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
         console.log(`  State: ${delegation.state}`);
