@@ -7,7 +7,7 @@
   "ethEndpoint": "http://localhost:8545",
   "dappchainEndpoint": "http://localhost:46658",
 
-  "loomGatewayEthAddress": "0x9E51aEEECa736CD81D27E025465834b8eC08628A",
+  "loomGatewayEthAddress": "0x6804f48233F6Ff2b468f7636560d525ca951931e",
 
   "chainId": "default"
 }
