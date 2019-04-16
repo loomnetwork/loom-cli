@@ -5023,9 +5023,9 @@ log-update@^2.3.0:
     cli-cursor "^2.0.0"
     wrap-ansi "^3.0.1"
 
-"loom-js@https://github.com/loomnetwork/loom-js#dpos-v3":
+"loom-js@https://github.com/loomnetwork/loom-js#dist-dpos-v3":
   version "1.49.4"
-  resolved "https://github.com/loomnetwork/loom-js#61ceecf6c06b3a954c063c8bcef65a45552f1417"
+  resolved "https://github.com/loomnetwork/loom-js#840465d7b65a95886cc6e6b1d7c062e8b2fb435d"
   dependencies:
     abi-decoder "^1.2.0"
     axios "^0.18.0"
