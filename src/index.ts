@@ -24,6 +24,23 @@ const createUser = async (config: any) : Promise<DPOSUser> => {
     });
 }
 
+// DEPOSITS AND WITHDRAWALS (gateway-user)
+
+program
+  .command("coin-balance")
+  .description("display the user's balances")
+  .action(async function(options) {
+    const user = await createUser(config)
+    try {
+      const dappchainBalance = await user.getDAppChainBalanceAsync();
+      const mainnetBalance = await user.ethereumLoom.balanceOf(user.ethAddress)
+      console.log(`The account's dappchain balance is\nDappchain: ${dappchainBalance}\nMainnet:${mainnetBalance} `);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+
 program
   .command("deposit <amount>")
   .description(
@@ -31,6 +48,11 @@ program
   )
   .action(async function(amount: string) {
     const user = await createUser(config)
+    // Always try to map accounts before depositing, just in case.
+    try {
+      await user.mapAccountsAsync();
+    } catch (err) {}
+
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
       await tx.wait();
@@ -108,19 +130,7 @@ program
     }
   });
 
-// DPOS BINDINGS
-
-program
-  .command("map-accounts")
-  .description("Connects the user's eth/dappchain addresses")
-  .action(async function() {
-    const user = await createUser(config)
-    try {
-      await user.mapAccountsAsync();
-    } catch (err) {
-      console.error(err);
-    }
-  });
+// DPOS MAPPINGS
 
 program
   .command("list-validators")
@@ -154,6 +164,10 @@ program
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
         console.log("  Address:", c.address.toString());
         console.log("  Fee:", c.fee);
+        console.log("  New Fee:", c.newFee);
+        console.log("  Fee State:", c.candidateState);
+        console.log("  Whitelist Amount:", c.whitelistAmount.toString());
+        console.log("  Whitelist Tier:", c.whitelistLocktimeTier.toString());
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
         console.log("  Website:", c.website);
@@ -162,6 +176,101 @@ program
       console.error(err);
     }
   });
+
+program
+  .command("list-all-delegations")
+  .description("Shows all delegations that are active for each validator")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+      const delegations = await user.listAllDelegationsAsync();
+      console.log(`Delegations:`);
+      delegations.forEach(d => {
+          const dArray = d.delegationsArray
+          console.log(`  Total Amount delegated: ${d.delegationTotal}`)
+          console.log(`  Validator: ${dArray[0].validator.local.toString()}`)
+          dArray.forEach(delegation => {
+              console.log(`    Delegator: ${delegation.delegator.local.toString()}`)
+              console.log(`    Update Validator: ${delegation.updateValidator ? delegation.updateValidator!.local.toString() : "None"}`)
+              console.log(`    Index: ${delegation.index}`)
+              console.log(`    Amount: ${delegation.amount}`)
+              console.log(`    Update Amount: ${delegation.updateAmount}`)
+              console.log(`    Locktime: ${delegation.lockTime}`)
+              console.log(`    Locktime Tier: ${delegation.lockTimeTier}`)
+              console.log(`    Referrer: ${delegation.referrer ? delegation.referrer : "None"}`)
+              console.log(`    State: ${delegation.state}`)
+              
+              console.log('\n')
+          })
+
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+program
+    .command("list-delegations <validator>")
+  .description("Shows all delegations of a validator")
+  .action(async function(validator: string) {
+    const user = await createUser(config)
+      try {
+          const d = await user.listDelegationsAsync(validator);
+          const dArray = d.delegationsArray
+          console.log(`  Total Amount delegated: ${d.delegationTotal}`)
+          console.log(`  Validator: ${dArray[0].validator.local.toString()}`)
+          dArray.forEach(delegation => {
+              console.log(`    Delegator: ${delegation.delegator.local.toString()}`)
+              console.log(`    Update Validator: ${delegation.updateValidator ? delegation.updateValidator!.local.toString() : "None"}`)
+              console.log(`    Index: ${delegation.index}`)
+              console.log(`    Amount: ${delegation.amount}`)
+              console.log(`    Update Amount: ${delegation.updateAmount}`)
+              console.log(`    Locktime: ${delegation.lockTime}`)
+              console.log(`    Locktime Tier: ${delegation.lockTimeTier}`)
+              console.log(`    Referrer: ${delegation.referrer ? delegation.referrer : "None"}`)
+              console.log(`    State: ${delegation.state}`)
+
+              console.log('\n')
+          })
+      } catch (err) {
+          console.error(err);
+      }
+  });
+
+program
+  .command("my-delegations")
+  .description("display the user's delegations to all candidates")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+      const delegations = await user.checkAllDelegationsAsync()
+      for (const delegation of delegations.delegationsArray) {
+        console.log(`  Validator: ${delegation.delegator.toString()}`);
+        console.log(`  Delegator: ${delegation.validator.toString()}`);
+        console.log(`  Amount: ${delegation.amount}`);
+        console.log(`  Update Amount: ${delegation.updateAmount}`);
+        console.log(`  Locktime: ${delegation.lockTime}`);
+        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
+        console.log(`  State: ${delegation.state}`);
+      } 
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+program
+  .command("time-until-elections")
+  .description("displays the time until elections")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+      const time = await user.getTimeUntilElectionsAsync()
+      console.log(`${time} seconds until elections`)
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
 
 program
   .command("check-delegations")
@@ -177,6 +286,10 @@ program
         option.validator,
         option.delegator
       );
+        console.log(`Delegated from ${option.delegator} to ${option.validator}`)
+        console.log(`Amount: ${delegations!.amount}`)
+        console.log(`Weighted Amount: ${delegations!.weightedAmount}\n`)
+
         delegations!.delegationsArray.forEach(delegation => {
         console.log(`  Validator: ${delegation.delegator.toString()}`);
         console.log(`  Delegator: ${delegation.validator.toString()}`);
@@ -185,6 +298,9 @@ program
         console.log(`  Locktime: ${delegation.lockTime}`);
         console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
         console.log(`  State: ${delegation.state}`);
+        console.log(`  Index: ${delegation.index}`);
+        console.log(`  Referrer: ${delegation.referrer ? delegation.referrer : "None"}`);
+        console.log(`\n`)
         })
     } catch (err) {
       console.error(err);
@@ -205,27 +321,42 @@ program
   });
 
 program
-  .command("claim-delegations")
+  .command("claim-rewards")
   .description("Get back the user rewards")
   .action(async function() {
     const user = await createUser(config)
     try {
         const rewards = await user.claimRewardsAsync()
-        console.log(`User claimed back rewards: ${rewards}`);
+        console.log(`User claimed back rewards: ${rewards}. They will be available in your balance after elections.`);
     } catch (err) {
       console.error(err);
     }
   });
 
 program
-  .command("delegate <amount> <validator> <tier>")
+    .command("delegate <amount> <validator> <tier> <referrer>")
   .description("Delegate `amount` to a candidate / validator")
-  .action(async function(amount: string, validator: string, tier: string) {
+  .action(async function(amount: string, validator: string, tier: string, referrer?: string) {
     const user = await createUser(config)
     try {
       const actualAmount = new BN(amount).mul(coinMultiplier);
       console.log(`Delegating ${actualAmount.toString()} to validator`);
-      await user.delegateAsync(validator, actualAmount, parseInt(tier));
+      await user.delegateAsync(validator, actualAmount, parseInt(tier), referrer);
+      console.log(`Delegated ${actualAmount.toString()} to validator`);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+program
+    .command("redelegate <amount> <formerValidator> <validator> <index>")
+  .description("Instantly redelegates an amount from a delegation to another validator")
+  .action(async function(amount: string, formerValidator: string, validator: string, index: number) {
+    const user = await createUser(config)
+    try {
+      const actualAmount = new BN(amount).mul(coinMultiplier);
+      console.log(`Redelegating ${actualAmount.toString()} from ${formerValidator} to ${validator}`);
+      await user.redelegateAsync(formerValidator, validator, actualAmount, index);
       console.log(`Delegated ${actualAmount.toString()} to validator`);
     } catch (err) {
       console.error(err);
@@ -240,49 +371,6 @@ program
     try {
       await user.undelegateAsync(validator, new BN(amount).mul(coinMultiplier), index);
       console.log(`Undelegated ${amount} LOOM to ${validator}`);
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
-// GENERAL DAPPCHAIN/ETH GETTERS
-
-program
-  .command("coin-balance")
-  .description(
-    "display the current DAppChain ERC20 token balance for an account"
-  )
-  .option(
-    "-a, --account <dappchain b64 address | ethereum hex address> | gateway",
-    "Account address"
-  )
-  .action(async function(options) {
-    const user = await createUser(config)
-    try {
-      const dappchainBalance = await user.getDAppChainBalanceAsync(options.account);
-      const mainnetBalance = await user.ethereumLoom.balanceOf(user.ethAddress)
-      console.log(`The account's dappchain balance is\nDappchain: ${dappchainBalance}\nMainnet:${mainnetBalance} `);
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
-program
-  .command("my-delegations")
-  .description("display the user's delegations to all candidates")
-  .action(async function() {
-    const user = await createUser(config)
-    try {
-      const delegations = await user.checkAllDelegationsAsync()
-      for (const delegation of delegations.delegationsArray) {
-        console.log(`  Validator: ${delegation.delegator.toString()}`);
-        console.log(`  Delegator: ${delegation.validator.toString()}`);
-        console.log(`  Amount: ${delegation.amount}`);
-        console.log(`  Update Amount: ${delegation.updateAmount}`);
-        console.log(`  Locktime: ${delegation.lockTime}`);
-        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
-        console.log(`  State: ${delegation.state}`);
-      } 
     } catch (err) {
       console.error(err);
     }
