@@ -50,9 +50,9 @@ program
   .action(async function(amount: string) {
     const user = await createUser(config);
     // Always try to map accounts before depositing, just in case.
-    try {
-      await user.mapAccountsAsync();
-    } catch (err) {}
+    console.log("mapping accs")
+    await user.mapAccountsAsync();
+    console.log(await user.addressMapper!.getMappingAsync(user.loomAddress))
 
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
@@ -144,7 +144,7 @@ program
       validators.forEach(v => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(v.pubKey));
         console.log("  Address:", v.address.toString());
-        console.log("  Slash percentage:", v.slashPct);
+        console.log("  Slash percentage:", v.slashPercentage);
         console.log("  Delegation total:", v.delegationTotal.toString());
         console.log("\n");
       });
