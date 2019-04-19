@@ -49,10 +49,10 @@ program
   )
   .action(async function(amount: string) {
     const user = await createUser(config);
-    // Always try to map accounts before depositing, just in case.
-    console.log("mapping accs")
-    await user.mapAccountsAsync();
-    console.log(await user.addressMapper!.getMappingAsync(user.loomAddress))
+    try {
+        // Always try to map accounts before depositing, just in case.
+        await user.mapAccountsAsync();
+    } catch(e) {console.log('GOT ERR', e)}
 
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
@@ -357,7 +357,7 @@ program
   });
 
 program
-  .command("delegate <amount> <validator> <tier> <referrer>")
+  .command("delegate <amount> <validator> <tier> [referrer]")
   .description("Delegate `amount` to a candidate / validator")
   .action(async function(
     amount: string,
