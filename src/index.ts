@@ -90,11 +90,13 @@ program
     try {
       const receipt = await user.getPendingWithdrawalReceiptAsync();
       if (receipt) {
+        const ethNonce = await user.ethereumGateway.functions.nonces(user.ethAddress)
         console.log(`Pending receipt:`);
         console.log("Token owner:", receipt.tokenOwner.toString());
         console.log("Contract:", receipt.tokenContract.toString());
         console.log("Token kind:", receipt.tokenKind);
         console.log("Nonce:", receipt.withdrawalNonce.toString());
+        console.log("Contract Nonce:", ethNonce.toString());
         console.log("Amount:", receipt.tokenAmount!.toString());
         console.log(
           "Signature:",
