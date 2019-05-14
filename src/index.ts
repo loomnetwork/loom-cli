@@ -20,7 +20,7 @@ const createUser = async (config: any) : Promise<DPOSUser> => {
         config.dappchainPrivateKey,
         config.chainId,
         config.loomGatewayEthAddress,
-        GatewayVersion.SINGLESIG
+        GatewayVersion.MULTISIG
     );
 }
 
@@ -111,20 +111,6 @@ program
   });
 
 // DPOS BINDINGS
-
-program
-  .command("map-accounts")
-  .description("Connects the user's eth/dappchain addresses")
-  .action(async function() {
-    const user = await createUser(config)
-    try {
-        console.log('trying to map acc')
-      await user.mapAccountsAsync();
-        console.log('mapped acc')
-    } catch (err) {
-      console.error(err);
-    }
-  });
 
 program
   .command("map-accounts")
