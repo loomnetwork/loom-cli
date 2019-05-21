@@ -1,9 +1,11 @@
 import program from "commander";
 import BN from "bn.js";
 
-import { DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
+import { DPOSUser, CryptoUtils, GatewayVersion, LocalAddress, Address } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
 const coinMultiplier = new BN(10).pow(new BN(18))
+
+const payout_candidates = require('./lean_payouts.json')
 
 program
     .version('0.1.0')
@@ -297,6 +299,28 @@ program
     } catch (err) {
       console.error(err);
     }
+  });
+
+  program
+  .command("transfer-missing-rewards")
+  .description("transfers missing rewards to predefined list of users")
+  .action(async function() {
+    const user = await createUser(config)
+    var total = new BN(0)
+    for (let candidate of payout_candidates) {
+      let target = new Address(
+        'default', LocalAddress.fromHexString(candidate.dappchain_address)
+      )
+      let amount = new BN((candidate.amount_owed * 1000000000000000000).toString(), 10);
+      console.log('target: ', target)
+      console.log('amount: ', amount.toString())
+      try {
+        await user.dappchainLoom.transferAsync(target, amount)
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
   });
 
 program.version("0.1.0").parse(process.argv);
