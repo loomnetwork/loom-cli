@@ -1,0 +1,13 @@
+{
+  "ethPrivateKey":
+    "0x79b51b00de6ba82c3893d0c65d76bc247a413dfabbee3bb958f4fa241f99528c",
+  "dappchainPrivateKey":
+  "eSZie5SyTJc0KU+98I1x1Mui0Ew+JL54AEZx0GvfDkcKkSN5K+eCarA/G8PCDc8YKLhNViHIB7EdvSUA9smGcQ==",
+
+  "ethEndpoint": "https://rinkeby.infura.io",
+  "dappchainEndpoint": "http://test-z-asia1.dappchains.com:80",
+
+  "loomGatewayEthAddress": "0x48d7CcCFAD03FC9f07BF4B547d6809A3aB54F6d4",
+
+  "chainId": "asia1"
+}

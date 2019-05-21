@@ -93,6 +93,8 @@ program
         const ethNonce = await user.ethereumGateway.functions.nonces(user.ethAddress)
         console.log(`Pending receipt:`);
         console.log("Token owner:", receipt.tokenOwner.toString());
+        console.log("Token address:", user.ethereumLoom.address)
+        console.log("Gateway address:", user.ethereumGateway.address)
         console.log("Contract:", receipt.tokenContract.toString());
         console.log("Token kind:", receipt.tokenKind);
         console.log("Nonce:", receipt.withdrawalNonce.toString());
@@ -111,6 +113,20 @@ program
   });
 
 // DPOS BINDINGS
+
+program
+  .command("accounts")
+  .description("Connects the user's eth/dappchain addresses")
+  .action(async function() {
+    const user = await createUser(config)
+    try {
+        console.log('Mainnet:', user.ethAddress)
+        console.log('Dappchain', user.loomAddress)
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
 
 program
   .command("map-accounts")

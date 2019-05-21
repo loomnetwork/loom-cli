@@ -1,13 +1,14 @@
 {
   "ethPrivateKey":
-    "0x51FC4C3B4E80E05712F0EA064B29A37C5706F34500FAFBD0916DFA862A0C7AFE",
+    "0x79b51b00de6ba82c3893d0c65d76bc247a413dfabbee3bb958f4fa241f99528c",
   "dappchainPrivateKey":
-  "3dkzVUxZuPYAH92Y7q8pfIFVSycMC4HlG9s4b/T0O+Kl7crj97OmdtZqetJW76wIXCiHMbDi03tdoFRDuZlFLw==",
+  "A4xsFP3taNLurJmXTITOR1O/6jWeX/GSJiITbWfXnx2PPvy8ZZ9pD7MxWbqWNeZnKHEd5kiZHOGyAQuPjfypRw==",
 
   "ethEndpoint": "https://rinkeby.infura.io",
   "dappchainEndpoint": "http://test-z-us1.dappchains.com:80",
 
-  "loomGatewayEthAddress": "0x76c41eFFc2871e73F42b2EAe5eaf8Efe50bDBF73",
+  "loomGatewayEthAddress": "0xEA319a0Ea64f482060032b4BE8d9d3F7232c1214",
 
-  "chainId": "default"
+  "chainId": "default",
+  "gatewayVersion" : "2"
 }

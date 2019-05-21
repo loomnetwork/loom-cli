@@ -1,0 +1,14 @@
+{
+  "ethPrivateKey":
+    "0x8d1b6a1f0a0b9f2f203ab95b2ed07ae0e6238e009a3c26ec3686b9abf6b86abb",
+  "dappchainPrivateKey":
+  "A4xsFP3taNLurJmXTITOR1O/6jWeX/GSJiITbWfXnx2PPvy8ZZ9pD7MxWbqWNeZnKHEd5kiZHOGyAQuPjfypRw==",
+
+  "ethEndpoint": "https://rinkeby.infura.io",
+  "dappchainEndpoint": "http://3.80.205.47:46658",
+
+  "loomGatewayEthAddress": "0x5D442Ef71427Fb0F57D63605F6FAf34cA8e78341",
+
+  "chainId": "distributed-gateway",
+  "gatewayVersion" : "2"
+}
