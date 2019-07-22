@@ -8,7 +8,7 @@ yarn install
 yarn build
 ```
 
-Create a config file based on the examples provided in the `configs` directory and addythe following bits of information:
+Create a config file based on the examples provided in the `configs` directory by adding the following bits of information:
  - your private eth key
  - you private key on Loom
  - your INFURA API KEY.
