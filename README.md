@@ -6,7 +6,17 @@ DPoS / Transfer Gateway CLI
 ```
 yarn install
 yarn build
-node dist/index.js -c src/config.json list-validators
+```
+
+Create a config file based on the examples provided in the `configs` directory and addythe following bits of information:
+ - your private eth key
+ - you private key on Loom
+ - your INFURA API KEY.
+
+Next, you can use the cli like this:
+
+```
+node dist/index.js -c configs/<YOUR CONFIG FILE> list-validators
 ```
 
 ## General Bindings
@@ -55,7 +65,7 @@ node dist/index.js -c src/config.json list-validators
 
 ## Keys
 
-The DappChainKey corresponds to the mnemonic `crater now gesture wish very major team share other strike month seminar` for using the dashboard. As a result, if you want to reuse any of the actions that you made with the CLI in the dashboard, you'll have to import the `ethPrivateKey` to metamask, and input that mnemonic in the dashboard when logging in. 
+The DappChainKey corresponds to the mnemonic `crater now gesture wish very major team share other strike month seminar` for using the dashboard. As a result, if you want to reuse any of the actions that you made with the CLI in the dashboard, you'll have to import the `ethPrivateKey` to metamask, and input that mnemonic in the dashboard when logging in.
 
 The ethereum key is configured to be one with a lot of Ether and Loom tokens for the ganache network that's distributed with `transfer-gateway-v2`
 

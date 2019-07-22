@@ -4,7 +4,7 @@
   "dappchainPrivateKey":
   "eSZie5SyTJc0KU+98I1x1Mui0Ew+JL54AEZx0GvfDkcKkSN5K+eCarA/G8PCDc8YKLhNViHIB7EdvSUA9smGcQ==",
 
-  "ethEndpoint": "https://rinkeby.infura.io",
+  "ethEndpoint": "https://rinkeby.infura.io/v3/<YOUR INFURA API KEY>",
   "dappchainEndpoint": "http://test-z-asia1.dappchains.com:80",
 
   "loomGatewayEthAddress": "0xD9C2fCbFCA4E46a89E2323aA1386E170F330D5f7",
