@@ -1,22 +1,68 @@
 # loom-cli
 DPoS / Transfer Gateway CLI
 
-## Usage
+## Install
 
 ```
 yarn install
 yarn build
 ```
 
-Create a config file based on the examples provided in the `configs` directory by adding the following bits of information:
- - your private eth key
- - you private key on Loom
- - your INFURA API KEY.
+## Generate a Loom Private Key
 
-Next, you can use the cli like this:
+### Testnet
+
+The following command will generate a private key and save it into a file called `extdev_private_key`:
 
 ```
-node dist/index.js -c configs/<YOUR CONFIG FILE> list-validators
+yarn gen:extdev-key
+```
+
+### Mainnet
+
+For Loom mainnet, run:
+
+```
+yarn gen:mainnet-key
+```
+
+This time, the private key will be saved into a file called `mainnet_private_key`.
+
+## Generate an Ethereum Private Key
+
+### Rinkeby
+
+The following command will generate a private key and save it into a file called `rinkeby_private_key`:
+
+```
+yarn gen:rinkeby-key
+```
+
+# Mainnet
+
+For Ethereum mainnet, run:
+
+```
+yarn gen:ethereum-key
+```
+
+This time, the private key will be saved into a file called `mainnet_private_key`.
+
+
+## Export Your Infura API Key
+
+```
+export INFURA_API_KEY=<YOUR_INFURA_API_KEY>
+```
+
+## Usage
+
+
+
+Next, you can use the CLI like this:
+
+```
+node dist/index.js -c ../configs/<YOUR CONFIG FILE> list-validators
 ```
 
 ## General Bindings

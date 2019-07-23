@@ -1,13 +1,13 @@
 {
-  "ethPrivateKey":
-    "0xe8445efa4e3349c3c74fd6689553f93b55aca723115fb777e1e6f4db2a0a82ca",
-  "dappchainPrivateKey":
-  "iODQtn4HpI9XdudhVSOlPxT1a8LugtCcpSa/0ir2nr2+m0zMRsUZtz6+s5DvoF9F8E6XPfsQSQ4d16C+umbbjA==",
+  "ethPrivateKeyFile":
+    "ethereum_private_key",
+  "dappchainPrivateKeyFile":
+    "mainnet_private_key",
 
-  "ethEndpoint": "https://mainnet.infura.io/v3/<YOUR INFURA API KEY>",
   "dappchainEndpoint": "http://plasma.dappchains.com:80",
 
   "loomGatewayEthAddress": "0x8f8E8b3C4De76A31971Fe6a87297D8f703bE8570",
 
   "chainId": "default"
+
 }

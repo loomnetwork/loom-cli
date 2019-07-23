@@ -1,5 +1,6 @@
 import program from "commander";
 import BN from "bn.js";
+const { readFileSync } = require('fs')
 
 import { DPOSUserV3 as DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
 import { ICandidate } from "loom-js/dist/contracts/dpos";
@@ -13,11 +14,18 @@ program
 const config = require(program.config);
 
 const createUser = async (config: any): Promise<DPOSUser> => {
+  if (!process.env.INFURA_API_KEY) {
+    throw new Error("INFURA_API_KEY env var not set")
+  }
+  const ethEndPoint =  `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`
+  const dappchainPrivateKey = readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
+  const ethPrivateKey = readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
+
   return DPOSUser.createOfflineUserAsync({
-    ethEndpoint: config.ethEndpoint,
-    ethereumPrivateKey: config.ethPrivateKey,
+    ethEndpoint: ethEndPoint,
+    ethereumPrivateKey: ethPrivateKey,
     dappchainEndpoint: config.dappchainEndpoint,
-    dappchainPrivateKey: config.dappchainPrivateKey,
+    dappchainPrivateKey: dappchainPrivateKey,
     chainId: config.chainId,
     gatewayAddress: config.loomGatewayEthAddress,
     version: GatewayVersion.MULTISIG
@@ -50,9 +58,9 @@ program
   .action(async function(amount: string) {
     const user = await createUser(config);
     try {
-        // Always try to map accounts before depositing, just in case.
-        await user.mapAccountsAsync();
-    } catch(e) {console.log('GOT ERR', e)}
+      // Always try to map accounts before depositing, just in case.
+      await user.mapAccountsAsync();
+    } catch (e) { console.log('GOT ERR', e) }
 
     try {
       const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
@@ -143,8 +151,8 @@ program
   .action(async function() {
     const user = await createUser(config)
     try {
-        console.log('Mainnet:', user.ethAddress)
-        console.log('Dappchain', user.loomAddress)
+      console.log('Mainnet:', user.ethAddress)
+      console.log('Dappchain', user.loomAddress)
     } catch (err) {
       console.error(err);
     }
@@ -159,9 +167,9 @@ program
   .action(async function() {
     const user = await createUser(config)
     try {
-        console.log('trying to map acc')
+      console.log('trying to map acc')
       await user.mapAccountsAsync();
-        console.log('mapped acc')
+      console.log('mapped acc')
     } catch (err) {
       console.error(err);
     }
@@ -172,7 +180,9 @@ program
   .command("list-validators")
   .description("Show the current DPoS validators")
   .action(async function() {
+
     const user = await createUser(config);
+
     try {
       const validators = await user.listValidatorsAsync();
       console.log(`Current validators:`);
@@ -230,9 +240,9 @@ program
           );
           console.log(
             `    Update Validator: ${
-              delegation.updateValidator
-                ? delegation.updateValidator!.local.toString()
-                : "None"
+            delegation.updateValidator
+              ? delegation.updateValidator!.local.toString()
+              : "None"
             }`
           );
           console.log(`    Index: ${delegation.index}`);
@@ -242,7 +252,7 @@ program
           console.log(`    Locktime Tier: ${delegation.lockTimeTier}`);
           console.log(
             `    Referrer: ${
-              delegation.referrer ? delegation.referrer : "None"
+            delegation.referrer ? delegation.referrer : "None"
             }`
           );
           console.log(`    State: ${delegation.state}`);
@@ -269,9 +279,9 @@ program
         console.log(`    Delegator: ${delegation.delegator.local.toString()}`);
         console.log(
           `    Update Validator: ${
-            delegation.updateValidator
-              ? delegation.updateValidator!.local.toString()
-              : "None"
+          delegation.updateValidator
+            ? delegation.updateValidator!.local.toString()
+            : "None"
           }`
         );
         console.log(`    Index: ${delegation.index}`);
