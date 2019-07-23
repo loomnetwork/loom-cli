@@ -149,10 +149,10 @@ program
   .command("accounts")
   .description("Connects the user's eth/dappchain addresses")
   .action(async function() {
-    const user = await createUser(config)
     try {
-      console.log('Mainnet:', user.ethAddress)
-      console.log('Dappchain', user.loomAddress)
+      const user = await createUser(config)
+      console.log('Ethereum Mainnet: ', user.ethAddress)
+      console.log('Loom Mainnet: ', user.loomAddress)
     } catch (err) {
       console.error(err);
     }

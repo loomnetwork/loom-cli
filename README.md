@@ -25,7 +25,7 @@ For Ethereum mainnet, run:
 yarn gen:ethereum-key
 ```
 
-This command will save the private key into a file called `mainnet_private_key`.
+This command will save the private key into a file called `ethereum_private_key`.
 
 
 ## Export Your Infura API Key
@@ -48,7 +48,7 @@ node dist/index.js -c ../configs/mainnet.json map-accounts
 Next, you can use the CLI like this:
 
 ```
-node dist/index.js -c ../configs/<YOUR CONFIG FILE> list-validators
+node dist/index.js -c ../configs/mainnet.json list-validators
 ```
 
 ## General Bindings
@@ -95,11 +95,6 @@ node dist/index.js -c ../configs/<YOUR CONFIG FILE> list-validators
 3. http://localhost:46658, chainId: default
 4. Your node
 
-## Keys
-
-The DappChainKey corresponds to the mnemonic `crater now gesture wish very major team share other strike month seminar` for using the dashboard. As a result, if you want to reuse any of the actions that you made with the CLI in the dashboard, you'll have to import the `ethPrivateKey` to metamask, and input that mnemonic in the dashboard when logging in.
-
-The ethereum key is configured to be one with a lot of Ether and Loom tokens for the ganache network that's distributed with `transfer-gateway-v2`
 
 ## Loom Gateway Address
 
