@@ -1,0 +1,13 @@
+{
+  "ethPrivateKey":
+    "0x79b51b00de6ba82c3893d0c65d76bc247a413dfabbee3bb958f4fa241f99528c",
+  "dappchainPrivateKey":
+  "A4xsFP3taNLurJmXTITOR1O/6jWeX/GSJiITbWfXnx2PPvy8ZZ9pD7MxWbqWNeZnKHEd5kiZHOGyAQuPjfypRw==",
+
+  "ethEndpoint": "https://rinkeby.infura.io/v3/<YOUR INFURA API KEY>",
+  "dappchainEndpoint": "http://extdev-plasma-us1.dappchains.com:80",
+
+  "loomGatewayEthAddress": "0x5558ba31CB91b2a45B3DCe9c720A0e0b59785711",
+
+  "chainId": "extdev-plasma-us1",
+}
