@@ -62,12 +62,8 @@ typings/
 
 # next.js build output
 .next
-rinkeby_account
-rinkeby_mnemonic
-rinkeby_private_key
-rinkeby_private_key
-mainnet_private_key
-extdev_private_key
+
 ethereum_private_key
 ethereum_mnemonic
 ethereum_account
+mainnet_private_key

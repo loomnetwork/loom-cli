@@ -17,7 +17,7 @@ const createUser = async (config: any): Promise<DPOSUser> => {
   if (!process.env.INFURA_API_KEY) {
     throw new Error("INFURA_API_KEY env var not set")
   }
-  const ethEndPoint =  `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`
+  const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
   const dappchainPrivateKey = readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
   const ethPrivateKey = readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
 
@@ -28,7 +28,7 @@ const createUser = async (config: any): Promise<DPOSUser> => {
     dappchainPrivateKey: dappchainPrivateKey,
     chainId: config.chainId,
     gatewayAddress: config.loomGatewayEthAddress,
-    version: GatewayVersion.MULTISIG
+    version: GatewayVersion.SINGLESIG
   });
 };
 

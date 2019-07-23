@@ -10,35 +10,14 @@ yarn build
 
 ## Generate a Loom Private Key
 
-### Testnet
-
-The following command will generate a private key and save it into a file called `extdev_private_key`:
-
-```
-yarn gen:extdev-key
-```
-
-### Mainnet
-
-For Loom mainnet, run:
-
+To generate a Loom private key, run:
 ```
 yarn gen:mainnet-key
 ```
 
-This time, the private key will be saved into a file called `mainnet_private_key`.
+The private key will be saved into a file called `mainnet_private_key`.
 
 ## Generate an Ethereum Private Key
-
-### Rinkeby
-
-The following command will generate a private key and save it into a file called `rinkeby_private_key`:
-
-```
-yarn gen:rinkeby-key
-```
-
-# Mainnet
 
 For Ethereum mainnet, run:
 
@@ -46,7 +25,7 @@ For Ethereum mainnet, run:
 yarn gen:ethereum-key
 ```
 
-This time, the private key will be saved into a file called `mainnet_private_key`.
+This command will save the private key into a file called `mainnet_private_key`.
 
 
 ## Export Your Infura API Key
@@ -55,8 +34,15 @@ This time, the private key will be saved into a file called `mainnet_private_key
 export INFURA_API_KEY=<YOUR_INFURA_API_KEY>
 ```
 
-## Usage
+## Setting Things Up
 
+First, you must map your accounts with:
+
+```
+node dist/index.js -c ../configs/mainnet.json map-accounts
+```
+
+## Usage
 
 
 Next, you can use the CLI like this:
