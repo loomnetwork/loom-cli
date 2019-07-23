@@ -62,3 +62,8 @@ typings/
 
 # next.js build output
 .next
+
+ethereum_private_key
+ethereum_mnemonic
+ethereum_account
+mainnet_private_key
