@@ -654,11 +654,10 @@ program
       const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
       const actualAmount = new BN(amount).mul(coinMultiplier);
       const dappchainLoom = await Contracts.Coin.createAsync(user.client, user.loomAddress);
-      console.log('Checking if the sender has a sufficient amount of Loom')
-      const balance = await dappchainLoom.getBalanceOfAsync(dpos.address)
-      console.log('User balance: ' + formatValueToCrypto(balance))
+      const balance = await dappchainLoom.getBalanceOfAsync(user.loomAddress)
       if (balance.lt(actualAmount)) {
-        throw new Error('Not enough Loom!')
+        console.log(`Insufficient funds, current balance is ${formatLoomAmount(balance)}`)
+        return
       }
       console.log(`Approving transfer of ${amount} LOOM...`);
       await dappchainLoom.approveAsync(dpos.address, actualAmount);
