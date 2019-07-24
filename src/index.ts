@@ -1,9 +1,15 @@
 import program from "commander";
 import BN from "bn.js";
-const { readFileSync } = require('fs')
+import fs from 'fs';
+import { ethers } from 'ethers'
 
-import { DPOSUserV3 as DPOSUser, CryptoUtils, GatewayVersion } from "loom-js";
-import { ICandidate } from "loom-js/dist/contracts/dpos";
+import { CryptoUtils, Contracts, Address, LocalAddress, Client, EthersSigner } from "loom-js";
+import { createDefaultClient, sleep } from 'loom-js/dist/helpers';
+
+const ERC20ABI = require('loom-js/dist/mainnet-contracts/ERC20.json')
+const ERC20GatewayABI = require('loom-js/dist/mainnet-contracts/ERC20Gateway.json')
+
+// LOOM has 18 decimals
 const coinMultiplier = new BN(10).pow(new BN(18));
 
 program
@@ -11,28 +17,125 @@ program
   .option("-c, --config <path>", "config file absolute path")
   .parse(process.argv);
 
-const config = require(program.config);
+const config: IConfig = require(program.config);
 
-const createUser = async (config: any): Promise<DPOSUser> => {
+interface IConfig {
+  loomGatewayEthAddress: string;
+  dappchainEndpoint: string;
+  dappchainPrivateKeyFile: string;
+  ethPrivateKeyFile: string;
+  chainId: string;
+}
+
+interface IUser {
+  // Client used to interact with Loom Mainnet
+  client: Client;
+  // Wallet used to interact with Ethereum Mainnet
+  wallet: ethers.Wallet;
+  // Address of account on Loom Mainnet that will be used to sign Loom Mainnet txs
+  loomAddress: Address;
+  // Address of account on Ethereum Mainnet that will be used to sign Ethereum Mainnet txs
+  ethAddress: string;
+}
+
+const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
+
+/**
+ * Creates clients to interact with Loom Mainnet and Ethereum Mainnet on behalf of a user.
+ * 
+ * @param config Network and key configuration.
+ */
+async function createUser(config: IConfig): Promise<IUser> {
   if (!process.env.INFURA_API_KEY) {
     throw new Error("INFURA_API_KEY env var not set")
   }
-  const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
-  const dappchainPrivateKey = readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
-  const ethPrivateKey = readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
+  
+  const dappchainPrivateKey = fs.readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
+  const ethPrivateKey = fs.readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
 
-  return DPOSUser.createOfflineUserAsync({
-    ethEndpoint: ethEndPoint,
-    ethereumPrivateKey: ethPrivateKey,
-    dappchainEndpoint: config.dappchainEndpoint,
-    dappchainPrivateKey: dappchainPrivateKey,
-    chainId: config.chainId,
-    gatewayAddress: config.loomGatewayEthAddress,
-    version: GatewayVersion.SINGLESIG
-  });
+  const { client, publicKey } = createDefaultClient(
+    dappchainPrivateKey,
+    config.dappchainEndpoint,
+    config.chainId
+  )
+
+  const provider = new ethers.providers.JsonRpcProvider(ethEndPoint)
+  const wallet = new ethers.Wallet(ethPrivateKey, provider)
+  const ethAddress = await wallet.getAddress()
+
+  return {
+    client,
+    wallet,
+    loomAddress: new Address(client.chainId, LocalAddress.fromPublicKey(publicKey)),
+    ethAddress,
+  }
 };
 
-// DEPOSITS AND WITHDRAWALS (gateway-user)
+/**
+ * Maps a Loom account to an Ethereum account if no such mapping exists yet.
+ * Throws an error if the Loom account is already mapped to a different Ethereum account.
+ * 
+ * @param loomAddress Address of user account on Loom Mainnet.
+ * @param ethAddressStr Address of user account on Ethereum Mainnet.
+ * @param client Loom Mainnet client.
+ * @param wallet ethers.js wallet for the user's Ethereum Mainnet account.
+ */
+async function mapAccountsAsync(
+  loomAddress: Address, ethAddressStr: string, client: Client, wallet: ethers.Wallet
+): Promise<void> {
+  const ethAddress = Address.fromString(`eth:${ethAddressStr}`);
+  const mapper = await Contracts.AddressMapper.createAsync(client, loomAddress);
+  if (await mapper.hasMappingAsync(loomAddress)) {
+    const mapping = await mapper.getMappingAsync(loomAddress);
+    if (!mapping.to.equals(ethAddress)) {
+      throw new Error(
+        `Can't map ${mapping.from.toString()} to ${ethAddress} it's already mapped to ${mapping.to.toString()}`
+      )
+    }
+    return
+  }
+
+  const signer = new EthersSigner(wallet)
+  console.log(`Mapping ${loomAddress} to ${ethAddress}...`)
+  await mapper.addIdentityMappingAsync(loomAddress, ethAddress, signer)
+  console.log('Mapping complete')
+}
+
+/**
+ * Deposits LOOM tokens to the Loom Mainnet Gateway and return a signature which can be used to
+ * withdraw the same amount from the Ethereum Mainnet Gateway.
+ *
+ * @param gateway Contract binding for Loom Mainnet Gateway.
+ * @param amount The amount that should be deposited to the Loom Mainnet Gateway.
+ * @param loomEthAddressStr LOOM token contract address on Ethereum Mainnet.
+ * @param user User making the deposit.
+ * @returns Hex-encoded string representing the signed receipt.
+ */
+async function depositToLoomGatewayAsync(
+  gateway: Contracts.LoomCoinTransferGateway, amount: BN, loomEthAddressStr: string, user: IUser,
+): Promise<string> {
+  let pendingReceipt = await gateway.withdrawalReceiptAsync(user.loomAddress);
+  let signature: Uint8Array
+  if (pendingReceipt === null) {
+    const dappchainLoom = await Contracts.Coin.createAsync(user.client, user.loomAddress);
+    console.log(`Approving ${amount.toString()}...`);
+    await dappchainLoom.approveAsync(gateway.address, amount);
+    const userEthAddress = Address.fromString(`eth:${user.ethAddress}`);
+    const loomEthAddress = Address.fromString(`eth:${loomEthAddressStr}`);
+    console.log(`Transferring ${amount.div(coinMultiplier).toString()} to Loom Mainnet Gateway...`);
+    await gateway.withdrawLoomCoinAsync(amount, loomEthAddress, userEthAddress);
+    console.log(`Transfer complete, waiting for signed receipt...`);
+
+    while (pendingReceipt === null || pendingReceipt.oracleSignature.length === 0) {
+      pendingReceipt = await gateway.withdrawalReceiptAsync(user.loomAddress);
+      await sleep(2000);
+    }
+  }
+  signature = pendingReceipt.oracleSignature
+  return CryptoUtils.bytesToHexAddr(signature)
+}
+
+// DEPOSIT AND WITHDRAWAL commands
 
 program
   .command("coin-balance")
@@ -40,13 +143,22 @@ program
   .action(async function(options) {
     const user = await createUser(config);
     try {
-      const dappchainBalance = await user.getDAppChainBalanceAsync();
-      const mainnetBalance = await user.ethereumLoom.balanceOf(user.ethAddress);
+      const dappchainLoom = await Contracts.Coin.createAsync(user.client, user.loomAddress);
+      const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
+      const loomEthAddress = await ethereumGateway.functions.loomAddress();
+      const ethereumLoom = new ethers.Contract(loomEthAddress, ERC20ABI, user.wallet);
+      
+      const loomMainnetBalance = await dappchainLoom.getBalanceOfAsync(user.loomAddress);
+      const loomEthereumBalance = await ethereumLoom.balanceOf(user.ethAddress);
       console.log(
-        `The account's dappchain balance is\nDappchain: ${dappchainBalance}\nMainnet:${mainnetBalance} `
+        `Loom Mainnet balance: ${loomMainnetBalance}\nEthereum Mainnet balance: ${loomEthereumBalance}`
       );
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect()
+      }
     }
   });
 
@@ -58,17 +170,48 @@ program
   .action(async function(amount: string) {
     const user = await createUser(config);
     try {
-      // Always try to map accounts before depositing, just in case.
-      await user.mapAccountsAsync();
-    } catch (e) { console.log('GOT ERR', e) }
+      // Ensure accounts are mapped before depositing.
+      await mapAccountsAsync(user.loomAddress, user.ethAddress, user.client, user.wallet);
+    } catch (e) {
+      console.log('GOT ERR', e);
+    }
 
     try {
-      const tx = await user.depositAsync(new BN(amount).mul(coinMultiplier));
+      const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
+      const loomEthAddress = await ethereumGateway.functions.loomAddress();
+      const ethereumLoom = new ethers.Contract(loomEthAddress, ERC20ABI, user.wallet);
+
+      console.log('Checking current allowance...');
+      const currentApproval = await ethereumLoom.functions.allowance(
+        user.ethAddress,
+        config.loomGatewayEthAddress
+      );
+      const currentApprovalBN = new BN(currentApproval.toString());
+      console.log(`Current allowance is ${currentApprovalBN.div(coinMultiplier).toString()}`);
+      
+      let amountBN = new BN(amount).mul(coinMultiplier);
+      // If current allowance is smaller than necessary then re-approve the full amount
+      if (amountBN.gt(currentApprovalBN)) {
+        console.log(`Approving transfer of ${amount} LOOM...`);
+        let tx = await ethereumLoom.functions.approve(config.loomGatewayEthAddress, amountBN.toString());
+        console.log('Waiting for tx confirmation...')
+        await tx.wait();
+      }
+      console.log(`Depositing ${amount} LOOM to Ethereum Gateway...`)
+      const tx = await ethereumGateway.functions.depositERC20(
+        amountBN.toString(),
+        ethereumLoom.address
+      );
+      console.log('Waiting for tx confirmation...')
       await tx.wait();
       console.log(`${amount} tokens deposited to Ethereum Gateway.`);
-      console.log(`Rinkeby tx hash: ${tx.hash}`);
+      console.log(`Ethereum tx hash: ${tx.hash}`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -84,15 +227,23 @@ program
   .action(async function(amount: string, options: any) {
     const user = await createUser(config);
     try {
-      const actualAmount = new BN(amount).mul(coinMultiplier);
-      const tx = await user.withdrawAsync(actualAmount);
+      const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
+      const loomEthAddress: string = await ethereumGateway.functions.loomAddress();
+      const dappchainGateway = await Contracts.LoomCoinTransferGateway.createAsync(user.client, user.loomAddress);
+      const amountBN = new BN(amount).mul(coinMultiplier);
+      const sig = await depositToLoomGatewayAsync(dappchainGateway, amountBN, loomEthAddress, user);
+      console.log('Withdrawing from Ethereum Gateway...');
+      const tx = await ethereumGateway.functions.withdrawERC20(amountBN.toString(), sig, loomEthAddress);
+      console.log('Waiting for tx confirmation...');
       await tx.wait();
       console.log(`${amount} tokens withdrawn from Ethereum Gateway.`);
-      console.log(`Rinkeby tx hash: ${tx.hash}`);
+      console.log(`Ethereum tx hash: ${tx.hash}`);
     } catch (err) {
       console.error(err);
     } finally {
-      if (user) user.disconnect();
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -102,14 +253,34 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const tx = await user.resumeWithdrawalAsync();
-      if (tx) {
-        await tx.wait();
+      const dappchainGateway = await Contracts.LoomCoinTransferGateway.createAsync(user.client, user.loomAddress);
+      let receipt = await dappchainGateway.withdrawalReceiptAsync(user.loomAddress);
+      if (receipt === null) {
+        console.log('No withdrawal receipt found');
+        return;
       }
+      if (receipt.oracleSignature.length === 0) {
+        console.log("Withdrawal receipt hasn't been signed yet, try again later.");
+        return;
+      }
+      const sig = CryptoUtils.bytesToHexAddr(receipt.oracleSignature);
+      if (!receipt.tokenAmount || receipt.tokenAmount.isZero()) {
+        console.log("Withdrawal receipt contains an invalid amount.");
+      }
+      
+      console.log(`Withdrawing ${receipt.tokenAmount!.div(coinMultiplier).toString()} LOOM from Ethereum Gateway...`);
+      const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
+      const loomEthAddress: string = await ethereumGateway.functions.loomAddress();
+      const tx = await ethereumGateway.functions.withdrawERC20(receipt.tokenAmount!.toString(), sig, loomEthAddress);
+      console.log('Waiting for tx confirmation...');
+      await tx.wait();
+      console.log(`Withdrawal complete, Ethereum tx hash: ${tx.hash}`);
     } catch (err) {
       console.error(err);
     } finally {
-      user.disconnect();
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -119,81 +290,73 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const receipt = await user.getPendingWithdrawalReceiptAsync();
+      const dappchainGateway = await Contracts.LoomCoinTransferGateway.createAsync(user.client, user.loomAddress);
+      const receipt = await dappchainGateway.withdrawalReceiptAsync(user.loomAddress);
       if (receipt) {
-        const ethNonce = await user.ethereumGateway.functions.nonces(user.ethAddress)
+        const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
+        const loomEthAddress = await ethereumGateway.functions.loomAddress();
+        const ethNonce = await ethereumGateway.functions.nonces(user.ethAddress);
         console.log(`Pending receipt:`);
         console.log("Token owner:", receipt.tokenOwner.toString());
-        console.log("Token address:", user.ethereumLoom.address)
-        console.log("Gateway address:", user.ethereumGateway.address)
+        console.log("Token address:", loomEthAddress)
+        console.log("Gateway address:", ethereumGateway.address)
         console.log("Contract:", receipt.tokenContract.toString());
         console.log("Token kind:", receipt.tokenKind);
         console.log("Nonce:", receipt.withdrawalNonce.toString());
         console.log("Contract Nonce:", ethNonce.toString());
         console.log("Amount:", receipt.tokenAmount!.toString());
-        console.log(
-          "Signature:",
-          CryptoUtils.bytesToHexAddr(receipt.oracleSignature)
-        );
+        console.log("Signature:", CryptoUtils.bytesToHexAddr(receipt.oracleSignature));
       } else {
         console.log(`No pending receipt`);
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
-// DPOS BINDINGS
-
-program
-  .command("accounts")
-  .description("Connects the user's eth/dappchain addresses")
-  .action(async function() {
-    try {
-      const user = await createUser(config)
-      console.log('Ethereum Mainnet: ', user.ethAddress)
-      console.log('Loom Mainnet: ', user.loomAddress)
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
-
-// DPOS BINDINGS
+// DPOS commands
 
 program
   .command("map-accounts")
-  .description("Connects the user's eth/dappchain addresses")
+  .description("Creates a mapping between a user's Loom Mainnet & Ethereum Mainnet accounts")
   .action(async function() {
     const user = await createUser(config)
     try {
-      console.log('trying to map acc')
-      await user.mapAccountsAsync();
-      console.log('mapped acc')
+      await mapAccountsAsync(user.loomAddress, user.ethAddress, user.client, user.wallet);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
-// DPOS MAPPINGS
 
 program
   .command("list-validators")
   .description("Show the current DPoS validators")
   .action(async function() {
-
     const user = await createUser(config);
-
     try {
-      const validators = await user.listValidatorsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const validators = await dpos.getValidatorsAsync();
       console.log(`Current validators:`);
       validators.forEach(v => {
-        console.log("  Address:", v.address.toString());
-        console.log("  Slash percentage:", v.slashPercentage);
-        console.log("  Delegation total:", v.delegationTotal.toString());
+        console.log(`  Address: ${v.address.toString()}`);
+        console.log(`  Slash percentage: ${v.slashPercentage.toString()}`);
+        console.log(`  Delegation total: ${v.delegationTotal.toString()}`);
         console.log("\n");
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -203,7 +366,8 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const candidates = await user.listCandidatesAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const candidates = await dpos.getCandidatesAsync();
       console.log(`Current candidates:`);
       candidates.forEach(c => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
@@ -216,9 +380,14 @@ program
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
         console.log("  Website:", c.website);
+        console.log("\n");
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -228,12 +397,14 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const delegations = await user.listAllDelegationsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const delegations = await dpos.getAllDelegations();
       console.log(`Delegations:`);
       delegations.forEach(d => {
         const dArray = d.delegationsArray;
         console.log(`  Total Amount delegated: ${d.delegationTotal}`);
         console.log(`  Validator: ${dArray[0].validator.local.toString()}`);
+        // TODO: make the output more readable, show tier name, state name, more readable amounts
         dArray.forEach(delegation => {
           console.log(
             `    Delegator: ${delegation.delegator.local.toString()}`
@@ -262,6 +433,10 @@ program
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -271,10 +446,13 @@ program
   .action(async function(validator: string) {
     const user = await createUser(config);
     try {
-      const d = await user.listDelegationsAsync(validator);
+      const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const d = await dpos.getDelegations(validatorAddress);
       const dArray = d.delegationsArray;
       console.log(`  Total Amount delegated: ${d.delegationTotal}`);
       console.log(`  Validator: ${dArray[0].validator.local.toString()}`);
+      // TODO: make the output more readable, show tier name, state name, more readable amounts
       dArray.forEach(delegation => {
         console.log(`    Delegator: ${delegation.delegator.local.toString()}`);
         console.log(
@@ -298,6 +476,10 @@ program
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -307,7 +489,13 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const delegations = await user.checkAllDelegationsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const delegations = await dpos.checkAllDelegationsAsync(user.loomAddress);
+      if (delegations.delegationsArray.length === 0) {
+        console.log("No delegations found");
+        return
+      }
+      // TODO: make the output more readable, show tier name, state name, more readable amounts
       for (const delegation of delegations.delegationsArray) {
         console.log(`  Validator: ${delegation.delegator.toString()}`);
         console.log(`  Delegator: ${delegation.validator.toString()}`);
@@ -319,6 +507,10 @@ program
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -328,34 +520,41 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const time = await user.getTimeUntilElectionsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const time = await dpos.getTimeUntilElectionAsync();
       console.log(`${time} seconds until elections`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
 program
   .command("check-delegations")
   .description(
-    "Check how much has a delegator bonded to a candidate/valdidator"
+    "Check how much has a delegator bonded to a candidate/validator"
   )
-  .option("-v, --validator <dappchain b64 address>")
-  .option("-d, --delegator <dappchain b64 address>")
+  .option("-v, --validator <hex-address>")
+  .option("-d, --delegator <hex-address>")
   .action(async function(option) {
     const user = await createUser(config);
     try {
-      const delegations = await user.checkDelegationsAsync(
-        option.validator,
-        option.delegator
-      );
-      console.log(`Delegated from ${option.delegator} to ${option.validator}`);
+      const validatorAddress = Address.fromString(`${user.client.chainId}:${option.validator}`);
+      // If the delegator address isn't specified assume the user is the delegator
+      const delegatorAddress = option.delegator ? Address.fromString(`${user.client.chainId}:${option.delegator}`) : user.loomAddress;
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const delegations = await dpos.checkDelegationAsync(validatorAddress, delegatorAddress);
+      console.log(`Delegated from ${delegatorAddress.toString()} to ${validatorAddress.toString()}`);
       console.log(`Amount: ${delegations!.amount}`);
       console.log(`Weighted Amount: ${delegations!.weightedAmount}\n`);
 
+      // TODO: make the output more readable, show tier name, state name, more readable amounts
       delegations!.delegationsArray.forEach(delegation => {
-        console.log(`  Validator: ${delegation.delegator.toString()}`);
-        console.log(`  Delegator: ${delegation.validator.toString()}`);
+        console.log(`  Validator: ${delegation.validator.toString()}`);
+        console.log(`  Delegator: ${delegation.delegator.toString()}`);
         console.log(`  Amount: ${delegation.amount}`);
         console.log(`  Update Amount: ${delegation.updateAmount}`);
         console.log(`  Locktime: ${delegation.lockTime}`);
@@ -369,6 +568,10 @@ program
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -378,10 +581,16 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const rewards = await user.checkAllDelegationsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const rewards = await dpos.checkAllDelegationsAsync(user.loomAddress);
+      // FIXME: this output isn't very useful
       console.log(`User unclaimed rewards: ${rewards}`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -391,12 +600,17 @@ program
   .action(async function() {
     const user = await createUser(config);
     try {
-      const rewards = await user.claimDelegatorRewardsAsync();
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const rewards = await dpos.claimDelegatorRewardsAsync();
       console.log(
         `User claimed back rewards: ${rewards}. They will be available in your balance after elections.`
       );
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -411,17 +625,27 @@ program
   ) {
     const user = await createUser(config);
     try {
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
       const actualAmount = new BN(amount).mul(coinMultiplier);
-      console.log(`Delegating ${actualAmount.toString()} to validator`);
-      await user.delegateAsync(
-        validator,
+      const dappchainLoom = await Contracts.Coin.createAsync(user.client, user.loomAddress);
+      // TODO: should check the user has a sufficient amount of LOOM first
+      console.log(`Approving transfer of ${amount} LOOM...`);
+      await dappchainLoom.approveAsync(dpos.address, actualAmount);
+      console.log(`Delegating ${amount} LOOM to validator...`);
+      await dpos.delegateAsync(
+        validatorAddress,
         actualAmount,
         parseInt(tier),
         referrer
       );
-      console.log(`Delegated ${actualAmount.toString()} to validator`);
+      console.log(`Delegated ${amount} LOOM to validator ${validator}`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
@@ -438,36 +662,43 @@ program
   ) {
     const user = await createUser(config);
     try {
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const formerValidatorAddress = Address.fromString(`${user.client.chainId}:${formerValidator}`);
+      const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
       const actualAmount = new BN(amount).mul(coinMultiplier);
-      console.log(
-        `Redelegating ${actualAmount.toString()} from ${formerValidator} to ${validator}`
-      );
-      await user.redelegateAsync(
-        formerValidator,
-        validator,
+      console.log(`Redelegating ${amount} LOOM from ${formerValidator} to ${validator}`);
+      await dpos.redelegateAsync(
+        formerValidatorAddress,
+        validatorAddress,
         actualAmount,
         index
       );
-      console.log(`Delegated ${actualAmount.toString()} to validator`);
+      console.log(`Delegated ${amount} LOOM to validator ${validator}`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
 program
   .command("undelegate <amount> <validator> <index>")
-  .option("-v, --validator <dappchain b64 address>")
   .action(async function(amount: string, validator: string, index: number) {
     const user = await createUser(config);
     try {
-      await user.undelegateAsync(
-        validator,
-        new BN(amount).mul(coinMultiplier),
-        index
-      );
-      console.log(`Undelegated ${amount} LOOM to ${validator}`);
+      const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
+      const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
+      const actualAmount = new BN(amount).mul(coinMultiplier);
+      await dpos.unbondAsync(validatorAddress, actualAmount, index);
+      console.log(`Undelegated ${amount} LOOM to validator ${validator}`);
     } catch (err) {
       console.error(err);
+    } finally {
+      if (user.client) {
+        user.client.disconnect();
+      }
     }
   });
 
