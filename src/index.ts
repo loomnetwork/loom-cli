@@ -12,6 +12,27 @@ const ERC20GatewayABI = require('loom-js/dist/mainnet-contracts/ERC20Gateway.jso
 // LOOM has 18 decimals
 const coinMultiplier = new BN(10).pow(new BN(18));
 
+const TIER_NAMES = {
+  0: '2 weeks',
+  1: '3 months',
+  2: '6 months',
+  3: '1 year'
+}
+
+const DELEGATION_STATE_NAMES = {
+  0: 'Bonding',
+  1: 'Bonded',
+  2: 'Unbonding',
+  3: 'Redelegating'
+}
+
+const CANDIDATE_STATE_NAMES = {
+  0: 'Registered',
+  1: 'Unregistering',
+  2: 'About to change fee',
+  3: 'Changing fee'
+}
+
 program
   .version("0.1.0")
   .option("-c, --config <path>", "config file absolute path")
@@ -42,14 +63,14 @@ const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}
 
 /**
  * Creates clients to interact with Loom Mainnet and Ethereum Mainnet on behalf of a user.
- * 
+ *
  * @param config Network and key configuration.
  */
 async function createUser(config: IConfig): Promise<IUser> {
   if (!process.env.INFURA_API_KEY) {
     throw new Error("INFURA_API_KEY env var not set")
   }
-  
+
   const dappchainPrivateKey = fs.readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
   const ethPrivateKey = fs.readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
 
@@ -71,10 +92,14 @@ async function createUser(config: IConfig): Promise<IUser> {
   }
 };
 
+function formatLoomAmount(amount: BN): string {
+  return ethers.utils.formatEther(ethers.utils.bigNumberify(amount.toString())) + ' LOOM'
+}
+
 /**
  * Maps a Loom account to an Ethereum account if no such mapping exists yet.
  * Throws an error if the Loom account is already mapped to a different Ethereum account.
- * 
+ *
  * @param loomAddress Address of user account on Loom Mainnet.
  * @param ethAddressStr Address of user account on Ethereum Mainnet.
  * @param client Loom Mainnet client.
@@ -147,7 +172,7 @@ program
       const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
       const loomEthAddress = await ethereumGateway.functions.loomAddress();
       const ethereumLoom = new ethers.Contract(loomEthAddress, ERC20ABI, user.wallet);
-      
+
       const loomMainnetBalance = await dappchainLoom.getBalanceOfAsync(user.loomAddress);
       const loomEthereumBalance = await ethereumLoom.balanceOf(user.ethAddress);
       console.log(
@@ -188,7 +213,7 @@ program
       );
       const currentApprovalBN = new BN(currentApproval.toString());
       console.log(`Current allowance is ${currentApprovalBN.div(coinMultiplier).toString()}`);
-      
+
       let amountBN = new BN(amount).mul(coinMultiplier);
       // If current allowance is smaller than necessary then re-approve the full amount
       if (amountBN.gt(currentApprovalBN)) {
@@ -267,7 +292,7 @@ program
       if (!receipt.tokenAmount || receipt.tokenAmount.isZero()) {
         console.log("Withdrawal receipt contains an invalid amount.");
       }
-      
+
       console.log(`Withdrawing ${receipt.tokenAmount!.div(coinMultiplier).toString()} LOOM from Ethereum Gateway...`);
       const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
       const loomEthAddress: string = await ethereumGateway.functions.loomAddress();
@@ -372,11 +397,11 @@ program
       candidates.forEach(c => {
         console.log("  Pubkey:", CryptoUtils.Uint8ArrayToB64(c.pubKey));
         console.log("  Address:", c.address.toString());
-        console.log("  Fee:", c.fee);
-        console.log("  New Fee:", c.newFee);
-        console.log("  Fee State:", c.candidateState);
-        console.log("  Whitelist Amount:", c.whitelistAmount.toString());
-        console.log("  Whitelist Tier:", c.whitelistLocktimeTier.toString());
+        console.log("  Fee:", c.fee.toString());
+        console.log("  New Fee:", c.newFee.toString());
+        console.log("  Fee State:", CANDIDATE_STATE_NAMES[c.candidateState]);
+        console.log("  Whitelist Amount:", formatLoomAmount(c.whitelistAmount));
+        console.log("  Whitelist Tier:", TIER_NAMES[c.whitelistLocktimeTier]);
         console.log("  Description:", c.description);
         console.log("  Name:", c.name);
         console.log("  Website:", c.website);
@@ -402,9 +427,9 @@ program
       console.log(`Delegations:`);
       delegations.forEach(d => {
         const dArray = d.delegationsArray;
-        console.log(`  Total Amount delegated: ${d.delegationTotal}`);
+        console.log(`  Total Amount delegated: ${formatLoomAmount(d.delegationTotal)}`);
         console.log(`  Validator: ${dArray[0].validator.local.toString()}`);
-        // TODO: make the output more readable, show tier name, state name, more readable amounts
+
         dArray.forEach(delegation => {
           console.log(
             `    Delegator: ${delegation.delegator.local.toString()}`
@@ -417,16 +442,16 @@ program
             }`
           );
           console.log(`    Index: ${delegation.index}`);
-          console.log(`    Amount: ${delegation.amount}`);
-          console.log(`    Update Amount: ${delegation.updateAmount}`);
+          console.log(`    Amount: ${formatLoomAmount(delegation.amount)}`);
+          console.log(`    Update Amount: ${formatLoomAmount(delegation.updateAmount)}`);
           console.log(`    Locktime: ${delegation.lockTime}`);
-          console.log(`    Locktime Tier: ${delegation.lockTimeTier}`);
+          console.log(`    Locktime Tier: ${TIER_NAMES[delegation.lockTimeTier]}`);
           console.log(
             `    Referrer: ${
             delegation.referrer ? delegation.referrer : "None"
             }`
           );
-          console.log(`    State: ${delegation.state}`);
+          console.log(`    State: ${DELEGATION_STATE_NAMES[delegation.state]}`);
 
           console.log("\n");
         });
@@ -450,9 +475,9 @@ program
       const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
       const d = await dpos.getDelegations(validatorAddress);
       const dArray = d.delegationsArray;
-      console.log(`  Total Amount delegated: ${d.delegationTotal}`);
-      console.log(`  Validator: ${dArray[0].validator.local.toString()}`);
-      // TODO: make the output more readable, show tier name, state name, more readable amounts
+      console.log(`  Total Amount delegated: ${formatLoomAmount(d.delegationTotal)}`);
+      console.log(`  Validator: ${dArray[0].validator.local.toString()}\n`);
+
       dArray.forEach(delegation => {
         console.log(`    Delegator: ${delegation.delegator.local.toString()}`);
         console.log(
@@ -463,14 +488,14 @@ program
           }`
         );
         console.log(`    Index: ${delegation.index}`);
-        console.log(`    Amount: ${delegation.amount}`);
-        console.log(`    Update Amount: ${delegation.updateAmount}`);
+        console.log(`    Amount: ${formatLoomAmount(delegation.amount)}`);
+        console.log(`    Update Amount: ${formatLoomAmount(delegation.updateAmount)}`);
         console.log(`    Locktime: ${delegation.lockTime}`);
-        console.log(`    Locktime Tier: ${delegation.lockTimeTier}`);
+        console.log(`    Locktime Tier: ${TIER_NAMES[delegation.lockTimeTier]}`);
         console.log(
           `    Referrer: ${delegation.referrer ? delegation.referrer : "None"}`
         );
-        console.log(`    State: ${delegation.state}`);
+        console.log(`    State: ${DELEGATION_STATE_NAMES[delegation.state]}`);
 
         console.log("\n");
       });
@@ -495,15 +520,16 @@ program
         console.log("No delegations found");
         return
       }
-      // TODO: make the output more readable, show tier name, state name, more readable amounts
+
       for (const delegation of delegations.delegationsArray) {
-        console.log(`  Validator: ${delegation.delegator.toString()}`);
-        console.log(`  Delegator: ${delegation.validator.toString()}`);
-        console.log(`  Amount: ${delegation.amount}`);
-        console.log(`  Update Amount: ${delegation.updateAmount}`);
+        console.log(`  Validator: ${delegation.validator.toString()}`);
+        console.log(`  Delegator: ${delegation.delegator.toString()}`);
+        console.log(`  Amount: ${formatLoomAmount(delegation.amount)}`);
+        console.log(`  Update Amount: ${formatLoomAmount(delegation.updateAmount)}`);
         console.log(`  Locktime: ${delegation.lockTime}`);
-        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
-        console.log(`  State: ${delegation.state}`);
+        console.log(`  Locktime Tier: ${TIER_NAMES[delegation.lockTimeTier]}`);
+        console.log(`  State: ${DELEGATION_STATE_NAMES[delegation.state]}`);
+        console.log(`  Index: ${delegation.index}\n`);
       }
     } catch (err) {
       console.error(err);
@@ -548,18 +574,17 @@ program
       const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
       const delegations = await dpos.checkDelegationAsync(validatorAddress, delegatorAddress);
       console.log(`Delegated from ${delegatorAddress.toString()} to ${validatorAddress.toString()}`);
-      console.log(`Amount: ${delegations!.amount}`);
-      console.log(`Weighted Amount: ${delegations!.weightedAmount}\n`);
+      console.log(`Amount: ${formatLoomAmount(delegations!.amount)}`);
+      console.log(`Weighted Amount: ${formatLoomAmount(delegations!.weightedAmount)}\n`);
 
-      // TODO: make the output more readable, show tier name, state name, more readable amounts
       delegations!.delegationsArray.forEach(delegation => {
         console.log(`  Validator: ${delegation.validator.toString()}`);
         console.log(`  Delegator: ${delegation.delegator.toString()}`);
-        console.log(`  Amount: ${delegation.amount}`);
-        console.log(`  Update Amount: ${delegation.updateAmount}`);
+        console.log(`  Amount: ${formatLoomAmount(delegation.amount)}`);
+        console.log(`  Update Amount: ${formatLoomAmount(delegation.updateAmount)}`);
         console.log(`  Locktime: ${delegation.lockTime}`);
-        console.log(`  Locktime Tier: ${delegation.lockTimeTier}`);
-        console.log(`  State: ${delegation.state}`);
+        console.log(`  Locktime Tier: ${TIER_NAMES[delegation.lockTimeTier]}`);
+        console.log(`  State: ${DELEGATION_STATE_NAMES[delegation.state]}`);
         console.log(`  Index: ${delegation.index}`);
         console.log(
           `  Referrer: ${delegation.referrer ? delegation.referrer : "None"}`
@@ -629,7 +654,11 @@ program
       const validatorAddress = Address.fromString(`${user.client.chainId}:${validator}`);
       const actualAmount = new BN(amount).mul(coinMultiplier);
       const dappchainLoom = await Contracts.Coin.createAsync(user.client, user.loomAddress);
-      // TODO: should check the user has a sufficient amount of LOOM first
+      const balance = await dappchainLoom.getBalanceOfAsync(user.loomAddress)
+      if (balance.lt(actualAmount)) {
+        console.log(`Insufficient funds, current balance is ${formatLoomAmount(balance)}`)
+        return
+      }
       console.log(`Approving transfer of ${amount} LOOM...`);
       await dappchainLoom.approveAsync(dpos.address, actualAmount);
       console.log(`Delegating ${amount} LOOM to validator...`);
