@@ -54,8 +54,7 @@ node dist/index.js -c ../configs/mainnet.json list-validators
 ## General Bindings
 
 - `map-accounts`: Connects the user's dappchain/ethereum keys together. **THIS MUST BE EXECUTED WHEN CONNECTING A NEW KEYPAIR TO THE DAPPCHAIN**
-- `coin-balance`: Retrieves the user's DAppChain ERC20 balance. Optionally
-  provide `--eth` to show the Ethereum balance instead. Optionally provide `--account` to retrieve another user's balance.
+- `coin-balance`: Retrieves the user's Loom balance.
 - `resolve <contractName>`: Retrieve the `contractName`'s dappchain address from the address mapper
 
 ## Transfer Gateway Bindings
@@ -78,3 +77,14 @@ node dist/index.js -c ../configs/mainnet.json list-validators
   `--account to withdraw to a different address
 - `delegate <amount> <validator>`: Lock up `amount` and delegate it to `validator`
 - `undelegate <amount> <validator>`: Unbond `amount` from `validator`
+- `list-all-delegations`: Shows all delegations that are active for each validator
+- `list-delegations <validator>`: Shows all delegations of a validator
+- `my-delegations`: display the user's delegations to all candidates
+- `time-until-elections`: displays the time until elections
+- `check-delegations --validator <hex-address> (optional)  --delegator <hex-address> (optional)`: Check how much has a delegator bonded to a candidate/validator
+- `check-rewards`: Check the user rewards
+- `claim-rewards`: Get back the user rewards
+- `delegate <amount> <validator> <tier> [referrer]`: Delegates `amount` to a candidate / validator
+- `redelegate <amount> <formerValidator> <validator> <index>`: Instantly redelegates an amount from a delegation to another validator
+- `undelegate <amount> <validator> <index>`: Undelegates `amount` from a validator
+-
