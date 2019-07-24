@@ -481,7 +481,8 @@ program
       const dpos = await Contracts.DPOS3.createAsync(user.client, user.loomAddress);
       const d = await dpos.getDelegations(validatorAddress);
       const dArray = d.delegationsArray;
-      console.log(`  Total Amount delegated: ${d.delegationTotal}`);
+      const delegationTotal = formatValueToCrypto(d.delegationTotal)
+      console.log(`  Total Amount delegated: ${delegationTotal}`);
       console.log(`  Validator: ${dArray[0].validator.local.toString()}`);
 
       dArray.forEach(delegation => {
@@ -493,15 +494,21 @@ program
             : "None"
           }`
         );
+        const {formattedAmount, formattedUpdateAmount, formattedTierName, formattedDelegationState} = formatToCrypto(
+          delegation.amount,
+          delegation.updateAmount,
+          delegation.lockTimeTier,
+          delegation.state
+        )
         console.log(`    Index: ${delegation.index}`);
-        console.log(`    Amount: ${delegation.amount}`);
-        console.log(`    Update Amount: ${delegation.updateAmount}`);
+        console.log(`    Amount: ${formattedAmount}`);
+        console.log(`    Update Amount: ${formattedUpdateAmount}`);
         console.log(`    Locktime: ${delegation.lockTime}`);
-        console.log(`    Locktime Tier: ${delegation.lockTimeTier}`);
+        console.log(`    Locktime Tier: ${formattedTierName}`);
         console.log(
           `    Referrer: ${delegation.referrer ? delegation.referrer : "None"}`
         );
-        console.log(`    State: ${delegation.state}`);
+        console.log(`    State: ${formattedDelegationState}`);
 
         console.log("\n");
       });
