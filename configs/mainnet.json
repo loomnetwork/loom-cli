@@ -4,9 +4,9 @@
   "dappchainPrivateKeyFile":
     "mainnet_private_key",
 
-  "dappchainEndpoint": "http://plasma.dappchains.com:80",
+  "dappchainEndpoint": "http://basechain.dappchains.com:80",
 
-  "loomGatewayEthAddress": "0x8f8E8b3C4De76A31971Fe6a87297D8f703bE8570",
+  "loomGatewayEthAddress": "0xfcF1E3fA575A313fd81feA2caA06269B49F1A528",
 
   "chainId": "default"
 
