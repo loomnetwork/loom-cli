@@ -68,15 +68,15 @@ interface IUser {
  * @param config Network and key configuration.
  */
 async function createUser(config: IConfig): Promise<IUser> {
-
+  let ethEndPoint  = ``
   if(config.isBsc) {
-    const ethEndPoint =  `${config.infuraURL}`
+     ethEndPoint =  `${config.infuraURL}`
   }
   else {
     if (!process.env.INFURA_API_KEY) {
      throw new Error("INFURA_API_KEY env var not set")
     }
-    const ethEndPoint =  `${config.infuraURL}${process.env.INFURA_API_KEY}`
+     ethEndPoint =  `${config.infuraURL}${process.env.INFURA_API_KEY}`
   }
   
   const dappchainPrivateKey = fs.readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
@@ -89,6 +89,7 @@ async function createUser(config: IConfig): Promise<IUser> {
     config.chainId
   )
 
+  console.log("Connecting to EthEndpoint -${ethEndPoint}")
   const provider = new ethers.providers.JsonRpcProvider(ethEndPoint)
   const wallet = new ethers.Wallet(ethPrivateKey, provider)
   const ethAddress = await wallet.getAddress()
