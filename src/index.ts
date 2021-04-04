@@ -46,6 +46,8 @@ interface IConfig {
   dappchainPrivateKeyFile: string;
   ethPrivateKeyFile: string;
   chainId: string;
+  infuraURL: string;
+  isBsc: boolean;
 }
 
 interface IUser {
@@ -59,7 +61,6 @@ interface IUser {
   ethAddress: string;
 }
 
-const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
 
 /**
  * Creates clients to interact with Loom Mainnet and Ethereum Mainnet on behalf of a user.
@@ -67,12 +68,20 @@ const ethEndPoint =  `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}
  * @param config Network and key configuration.
  */
 async function createUser(config: IConfig): Promise<IUser> {
-  if (!process.env.INFURA_API_KEY) {
-    throw new Error("INFURA_API_KEY env var not set")
-  }
 
+  if(config.isBsc) {
+    const ethEndPoint =  `${config.infuraURL}`
+  }
+  else {
+    if (!process.env.INFURA_API_KEY) {
+     throw new Error("INFURA_API_KEY env var not set")
+    }
+    const ethEndPoint =  `${config.infuraURL}${process.env.INFURA_API_KEY}`
+  }
+  
   const dappchainPrivateKey = fs.readFileSync(config.dappchainPrivateKeyFile, 'utf-8').toString().trim()
   const ethPrivateKey = fs.readFileSync(config.ethPrivateKeyFile, 'utf-8').toString().trim()
+
 
   const { client, publicKey } = createDefaultClient(
     dappchainPrivateKey,
