@@ -6,8 +6,9 @@ import { ethers } from 'ethers'
 import { CryptoUtils, Contracts, Address, LocalAddress, Client, EthersSigner } from "loom-js";
 import { createDefaultClient, sleep } from 'loom-js/dist/helpers';
 
-const ERC20ABI = require('loom-js/dist/mainnet-contracts/ERC20.json')
-const ERC20GatewayABI = require('loom-js/dist/mainnet-contracts/ERC20Gateway.json')
+//const ERC20GatewayABI = require('loom-js/dist/mainnet-contracts/ERC20Gateway.json')
+import { abi as ERC20ABI } from 'loom-js/dist/mainnet-contracts/ERC20Factory'
+import { abi as ERC20GatewayABI } from 'loom-js/dist/mainnet-contracts/EthereumGatewayV1Factory'
 
 // LOOM has 18 decimals
 const coinMultiplier = new BN(10).pow(new BN(18));
@@ -89,7 +90,7 @@ async function createUser(config: IConfig): Promise<IUser> {
     config.chainId
   )
 
-  console.log("Connecting to EthEndpoint -${ethEndPoint}")
+  console.log(`Connecting to EthEndpoint -${ethEndPoint}`)
   const provider = new ethers.providers.JsonRpcProvider(ethEndPoint)
   const wallet = new ethers.Wallet(ethPrivateKey, provider)
   const ethAddress = await wallet.getAddress()
@@ -130,8 +131,10 @@ async function mapAccountsAsync(
     return
   }
 
+
   const signer = new EthersSigner(wallet)
   console.log(`Mapping ${loomAddress} to ${ethAddress}...`)
+
   await mapper.addIdentityMappingAsync(loomAddress, ethAddress, signer)
   console.log('Mapping complete')
 }
@@ -157,6 +160,7 @@ async function depositToLoomGatewayAsync(
     await dappchainLoom.approveAsync(gateway.address, amount);
     const userEthAddress = Address.fromString(`eth:${user.ethAddress}`);
     const loomEthAddress = Address.fromString(`eth:${loomEthAddressStr}`);
+    console.log(`userEthAddress->${userEthAddress}  loomEthAddress->${loomEthAddress}`)
     console.log(`Transferring ${amount.div(coinMultiplier).toString()} to Loom Mainnet Gateway...`);
     await gateway.withdrawLoomCoinAsync(amount, loomEthAddress, userEthAddress);
     console.log(`Transfer complete, waiting for signed receipt...`);
@@ -264,12 +268,18 @@ program
     try {
       const ethereumGateway = new ethers.Contract(config.loomGatewayEthAddress, ERC20GatewayABI, user.wallet);
       const loomEthAddress: string = await ethereumGateway.functions.loomAddress();
-      const dappchainGateway = await Contracts.LoomCoinTransferGateway.createAsync(user.client, user.loomAddress);
+      let dappchainGateway = await Contracts.LoomCoinTransferGateway.createAsync(user.client, user.loomAddress);
+
+      if(config.isBsc) {
+         console.log("Setting up a bsc gateway")
+         dappchainGateway = await Contracts.BscTransferGateway.createAsync(user.client, user.loomAddress);
+      }
+
       const amountBN = new BN(amount).mul(coinMultiplier);
       const sig = await depositToLoomGatewayAsync(dappchainGateway, amountBN, loomEthAddress, user);
       console.log('Withdrawing from Ethereum Gateway...');
       const tx = await ethereumGateway.functions.withdrawERC20(amountBN.toString(), sig, loomEthAddress);
-      console.log('Waiting for tx confirmation...');
+      console.log('Waiting for tx confirmation...--- ${tx}');
       await tx.wait();
       console.log(`${amount} tokens withdrawn from Ethereum Gateway.`);
       console.log(`Ethereum tx hash: ${tx.hash}`);
@@ -335,7 +345,9 @@ program
         console.log("Token owner:", receipt.tokenOwner.toString());
         console.log("Token address:", loomEthAddress)
         console.log("Gateway address:", ethereumGateway.address)
-        console.log("Contract:", receipt.tokenContract.toString());
+        if (receipt.tokenContract) {
+          console.log("Contract:", receipt.tokenContract.toString());
+        }
         console.log("Token kind:", receipt.tokenKind);
         console.log("Nonce:", receipt.withdrawalNonce.toString());
         console.log("Contract Nonce:", ethNonce.toString());
