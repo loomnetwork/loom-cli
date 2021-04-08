@@ -1,0 +1,16 @@
+{
+    "ethPrivateKeyFile":
+      "ethereum_private_key",
+    "dappchainPrivateKeyFile":
+      "mainnet_private_key",
+  
+    "dappchainEndpoint": "http://localhost:46658",
+  
+    "loomGatewayEthAddress": "0x0cee0FB12205b9Ca9d4Fbed502091dEfD7ae6ff5",
+  
+    "chainId": "default",
+
+    "infuraURL": "https://data-seed-prebsc-1-s1.binance.org:8545",
+    "isBsc": true
+  }
+  
